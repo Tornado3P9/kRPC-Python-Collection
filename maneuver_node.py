@@ -14,7 +14,7 @@ def str2bool(v: str) -> bool:
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
 def commandLine() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description = "Mun lander script")
+    parser = argparse.ArgumentParser(description = "Execute Maneuver Node")
     parser.add_argument("-V", "--version", action='version', version='%(prog)s 1.0')
     parser.add_argument('--do_circle', type=str2bool, nargs='?', const=True, default=False, help='Automatically create a maneuver node to circularize at apoapsis instead of creating a maneuver node manually (default: False)')
     return parser.parse_args()

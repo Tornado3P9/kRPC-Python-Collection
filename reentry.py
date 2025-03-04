@@ -2,13 +2,13 @@ import krpc
 import time
 
 def main():
-    conn = krpc.connect(name='Return Maneuver')
+    conn = krpc.connect(name='Reentry Maneuver')
     vessel = conn.space_center.active_vessel
 
     # Clear screen equivalent
     print("\033c", end="")
 
-    print("Started return maneuver")
+    print("Started reentry maneuver")
     vessel.control.sas = True
     time.sleep(2)
     vessel.control.sas_mode = conn.space_center.SASMode.retrograde

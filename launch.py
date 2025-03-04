@@ -20,7 +20,7 @@ def commandLine():
     parser.add_argument('--compass', type=int, help='horizontal compass direction (default: 90)', required = False, default = 90)
     parser.add_argument('--throttle', type=str2bool, nargs='?', const=True, default=False, help='Auto Throttle (default: False)')
     parser.add_argument('--ag5', type=str2bool, nargs='?', const=True, default=False, help='A boolean flag for Action Group 5 (default: False)') # escape tower or fairing deployment
-    parser.add_argument('--toss', type=int, help='throttle of second stage', required = False, default = 0)
+    # parser.add_argument('--toss', type=int, help='throttle of second stage', required = False, default = 0)
     return parser.parse_args()
 
 def gravity_turn(altitude):
@@ -41,7 +41,7 @@ def main() -> None:
     compass = argument.compass
     auto_throttle = argument.throttle
     ag5 = argument.ag5
-    toss = argument.toss
+    # toss = argument.toss
 
     conn = krpc.connect(name='Launch into orbit')
     vessel = conn.space_center.active_vessel
@@ -50,11 +50,11 @@ def main() -> None:
     ut = conn.add_stream(getattr, conn.space_center, 'ut')
     altitude = conn.add_stream(getattr, vessel.flight(), 'mean_altitude')
     apoapsis = conn.add_stream(getattr, vessel.orbit, 'apoapsis_altitude')
-    stage_2_resources = vessel.resources_in_decouple_stage(stage=2, cumulative=False)
-    srb_fuel = conn.add_stream(stage_2_resources.amount, 'SolidFuel')
+    # stage_2_resources = vessel.resources_in_decouple_stage(stage=2, cumulative=False)
+    # srb_fuel = conn.add_stream(stage_2_resources.amount, 'SolidFuel')
 
-    # Pre-launch setup
-    first_stage = True
+    # # Pre-launch setup
+    # first_stage = True
     vessel.control.sas = False
     vessel.control.rcs = False
     vessel.control.throttle = 1.0
@@ -90,9 +90,9 @@ def main() -> None:
     vessel.auto_pilot.target_roll = 0
     vessel.auto_pilot.target_pitch_and_heading(90, compass)
 
-    # Main ascent loop
-    srbs_separated = False
-    turn_angle = 0
+    # # Main ascent loop
+    # srbs_separated = False
+    # turn_angle = 0
 
     print("Gravity turn")
     while True:
