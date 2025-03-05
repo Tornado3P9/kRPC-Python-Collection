@@ -49,7 +49,6 @@ def calculate_deorbit_parameters(vessel, body) -> float:
     r2 = a  # Current orbit radius
     r1 = body_radius / 5000  # Target periapsis for deorbit
     delta_v = math.sqrt(mu/r2) * (1 - math.sqrt((2 * r1) / (r1 + r2)))  # Delta_v2 https://www.wikiwand.com/en/articles/Hohmann_transfer_orbit
-    print(f"Type of calculate_deorbit_parameters() -> {type(delta_v)}")
     return delta_v
 
 def calculate_burn_time(vessel, delta_v, g) -> float:

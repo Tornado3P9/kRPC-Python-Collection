@@ -138,6 +138,7 @@ def v_ang(v1, v2):
 
 if __name__ == "__main__":
     argument = commandLine()
+    print("\033c", end="")
     try:
         execute_maneuver_node(argument.do_circle)
     except KeyboardInterrupt:
