@@ -4,6 +4,7 @@ import math
 from simple_pid import PID
 import argparse
 
+
 def str2bool(v: str) -> bool:
     if isinstance(v, bool):
         return v
@@ -14,22 +15,27 @@ def str2bool(v: str) -> bool:
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
+
 def commandLine() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description = "Mun lander script")
+    parser = argparse.ArgumentParser(description = "Duna lander script")
     parser.add_argument("-V", "--version", action='version', version='%(prog)s 1.0')
     parser.add_argument('--radar', type=int, help='radar sensor height on lander (default: 2.7)', required = False, default = 2.7)
     parser.add_argument('--deorbit', type=str2bool, nargs='?', const=True, default=False, help='Auto deorbit the lander from a circular orbit (default: False)')
     return parser.parse_args()
 
+
 def connect_to_krpc() -> krpc.client.Client:
-    return krpc.connect(name='Mun Lander')
+    return krpc.connect(name='Duna Lander')
+
 
 def setup_vessel(conn) -> krpc.services.spacecenter.Vessel:
     vessel = conn.space_center.active_vessel
     vessel.control.sas = True
+    vessel.control.throttle = 0.0
     time.sleep(1)
     vessel.control.sas_mode = conn.space_center.SASMode.retrograde
     return vessel
+
 
 # def semi_major_axis(T, M) -> float:
 #     G = 6.67430e-11  # gravitational constant
@@ -41,6 +47,7 @@ def setup_vessel(conn) -> krpc.services.spacecenter.Vessel:
 #     # M = mass of the central body in kg
 #     # semi_major_axis(T, M)
 
+
 def calculate_deorbit_parameters(vessel, body) -> float:
     mu = body.gravitational_parameter  # GM in m^3/s^2
     body_radius = body.equatorial_radius
@@ -51,6 +58,7 @@ def calculate_deorbit_parameters(vessel, body) -> float:
     delta_v = math.sqrt(mu/r2) * (1 - math.sqrt((2 * r1) / (r1 + r2)))  # Delta_v2 https://www.wikiwand.com/en/articles/Hohmann_transfer_orbit
     return delta_v
 
+
 def calculate_burn_time(vessel, delta_v, g) -> float:
     F = vessel.available_thrust  # Available thrust of the vessel
     Isp = vessel.specific_impulse * g  # Specific impulse adjusted for gravity
@@ -58,6 +66,7 @@ def calculate_burn_time(vessel, delta_v, g) -> float:
     m1 = m0 / math.exp(delta_v/Isp)  # Final mass after burn
     flow_rate = F / Isp  # Fuel flow rate
     return (m0 - m1) / flow_rate  # Calculate burn time
+
 
 def execute_deorbit_burn(conn, vessel, burn_time) -> None:
     for i in range(5, 0, -1):
@@ -71,7 +80,43 @@ def execute_deorbit_burn(conn, vessel, burn_time) -> None:
     vessel.control.sas_mode = conn.space_center.SASMode.retrograde  # Switch back to retrograde mode because it automatically switches to stability mode
     time.sleep(1)  # Wait for changes to take effect
 
+
+def perform_reentry(vessel) -> None:
+    state = "parachute"
+    
+    print("Waiting until surface_altitude < 10 km")
+    while True:
+        if state == "parachute":
+            if vessel.flight().surface_altitude < 10_000:
+                print("AG1: Parachutes")
+                # vessel.control.toggle_action_group(1)
+                for parachute in vessel.parts.parachutes:
+                    parachute.arm()  # .deploy() or .arm()
+                time.sleep(3)
+                state = "heat_shield"
+        elif state == "heat_shield":
+            # parachutes = [part for part in vessel.parts.parachutes]
+            # all_deployed = all(parachute.state == parachute.state.deployed for parachute in parachutes)  # bool
+            if vessel.flight().surface_altitude < 4_000:
+                print("AG2: Jettison Heat Shield")
+                vessel.control.toggle_action_group(2)
+                time.sleep(2)
+                break
+                
+        # Sleep for a short duration to prevent excessive CPU usage
+        time.sleep(0.1)
+
+
 def perform_suicide_burn(vessel, safety_d) -> None:
+    print("Cutting parachutes")
+    for parachute in vessel.parts.parachutes:
+        if parachute.deployed:
+            parachute.cut()
+    
+    print("AG3: Activate Landing Engine")
+    vessel.control.toggle_action_group(3)
+    vessel.control.rcs = False
+    time.sleep(1)
     state = "armed"
     while True:
         mass = vessel.mass
@@ -121,15 +166,14 @@ def perform_suicide_burn(vessel, safety_d) -> None:
         # Sleep for a short duration to prevent excessive CPU usage
         time.sleep(0.1)
 
+
 def finalize_landing(conn, vessel, pid, name) -> None:
     print("\nPerforming final landing")
     vessel.control.sas_mode = conn.space_center.SASMode.radial
     throttle = 0.05  # initial throttle
     vessel.control.throttle = throttle
-    
-    # vessel.control.sas_mode = conn.space_center.SASMode.radial
-    time_init = conn.space_center.ut
-    change_sas_state = True
+    print("Activating landing gear")
+    vessel.control.gear = True
 
     while True:
         situation = vessel.situation
@@ -137,15 +181,10 @@ def finalize_landing(conn, vessel, pid, name) -> None:
             print(f"\nThe vessel has landed on {name}!")
             break
         # elif situation == conn.space_center.VesselSituation.splashed:
-        #     print("The vessel has splashed down!")
+        #     print("The vessel has splashed down on {name}!")
         #     break
         else:
             print(f"\rVessel in flight at altitude (radar sensor): {vessel.flight().surface_altitude:.2f} m", end='')  # last value is lander radar height at vessel
-            # when velocity low, retrograde marker becomes inactive, so wait a bit
-            time_now = conn.space_center.ut
-            if change_sas_state and (time_now - time_init) > 2.0:
-                vessel.control.sas_mode = conn.space_center.SASMode.retrograde
-                change_sas_state = False
             # Get the current vertical speed
             vertical_speed = vessel.flight(vessel.orbit.body.reference_frame).vertical_speed
             # Calculate the throttle using the PID controller
@@ -159,6 +198,13 @@ def finalize_landing(conn, vessel, pid, name) -> None:
     vessel.control.throttle = 0
     vessel.control.sas_mode = conn.space_center.SASMode.stability_assist
 
+
+def post_touch_down(vessel):
+    time.sleep(3)
+    print("AG0: Performing actions after landing")
+    vessel.control.toggle_action_group(0)
+
+
 def main() -> None:
     argument = commandLine()
     radar_alt = argument.radar
@@ -169,7 +215,11 @@ def main() -> None:
 
     try:
         print("\033c", end="")  # Clear screen equivalent
-
+        print("AG1 should be connected to 'Parachutes'")
+        print("AG2 should be connected to 'Jettison Heat Shield'")
+        print("AG3 should be connected to 'Activating Landing Engine'")
+        print("AG0 should be connected to any actions after landing\n")
+        
         conn = connect_to_krpc()
         vessel = setup_vessel(conn)
         body = vessel.orbit.body  # Solar body (e.g. Mun)
@@ -185,8 +235,10 @@ def main() -> None:
             burn_time = calculate_burn_time(vessel, delta_v, g)  # using the rocket equation
             print(f"Burn time: {burn_time:.2f} s")
             execute_deorbit_burn(conn, vessel, burn_time)
+        perform_reentry(vessel)
         perform_suicide_burn(vessel, safety_d)
         finalize_landing(conn, vessel, pid, body.name)
+        post_touch_down(vessel)
 
     except ZeroDivisionError as e:
         print(f"\nZeroDivisionError -> probably empty fuel tank or engine deactivated: {e}")
@@ -194,6 +246,7 @@ def main() -> None:
         print("\nScript exited by user.")
     except Exception as e:
         print(f"\nAn unexpected error occurred (note: keep navball extended): {e}")
+
 
 if __name__ == "__main__":
     main()
