@@ -3,6 +3,7 @@ import time
 import math
 import argparse
 
+
 def str2bool(v: str) -> bool:
     if isinstance(v, bool):
         return v
@@ -13,13 +14,15 @@ def str2bool(v: str) -> bool:
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
+
 def commandLine() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description = "Execute Maneuver Node")
     parser.add_argument("-V", "--version", action='version', version='%(prog)s 1.0')
     parser.add_argument('--do_circle', type=str2bool, nargs='?', const=True, default=False, help='Automatically create a maneuver node to circularize at apoapsis instead of creating a maneuver node manually (default: False)')
     return parser.parse_args()
 
-def execute_maneuver_node(do_circle):
+
+def execute_maneuver_node(do_circle) -> None:
     conn = krpc.connect(name='Maneuver Execution')
     vessel = conn.space_center.active_vessel
     if do_circle:
@@ -61,7 +64,8 @@ def execute_maneuver_node(do_circle):
     time.sleep(1)
     print("Script exited.")
 
-def planning_circularization_burn(conn, vessel):
+
+def planning_circularization_burn(conn, vessel) -> None:
     print('Planning circularization burn')
     mu = vessel.orbit.body.gravitational_parameter
     r = vessel.orbit.apoapsis
@@ -73,12 +77,14 @@ def planning_circularization_burn(conn, vessel):
     vessel.control.add_node(conn.space_center.ut + vessel.orbit.time_to_apoapsis, prograde=delta_v)
     time.sleep(1)
 
-def calculate_start_time(conn, node):
+
+def calculate_start_time(conn, node) -> float:
     global mnv_time
     mnv_time = maneuver_burn_time(conn, node)
     return conn.space_center.ut + node.time_to - mnv_time / 2
 
-def maneuver_burn_time(conn, node):
+
+def maneuver_burn_time(conn, node) -> float:
     dV = node.delta_v
     vessel = conn.space_center.active_vessel
     g0 = vessel.orbit.body.surface_gravity
@@ -100,13 +106,15 @@ def maneuver_burn_time(conn, node):
     print(f"Maneuver duration: {round(t)}s.")
     return t
 
-def do_circ_countdown(conn, start_time):
+
+def do_circ_countdown(conn, start_time) -> None:
     for i in range(5, 0, -1):
         while conn.space_center.ut < start_time - i:
             time.sleep(0.1)
         print(f"...{i}")
 
-def is_maneuver_complete(vessel, original_vector, threshold=0.2):
+
+def is_maneuver_complete(vessel, original_vector, threshold=0.2) -> bool:
     """
     Check if the maneuver node is complete.
 
@@ -126,7 +134,8 @@ def is_maneuver_complete(vessel, original_vector, threshold=0.2):
     remaining_delta_v = node.remaining_delta_v
     return remaining_delta_v < threshold
 
-def v_ang(v1, v2):
+
+def v_ang(v1, v2) -> float:
     dot_product = sum(a*b for a, b in zip(v1, v2))
     mag_v1 = math.sqrt(sum(a*a for a in v1))
     mag_v2 = math.sqrt(sum(a*a for a in v2))
@@ -136,6 +145,7 @@ def v_ang(v1, v2):
         angle = 0  # Handle edge cases where acos input is out of range
     return angle
 
+
 if __name__ == "__main__":
     argument = commandLine()
     print("\033c", end="")
@@ -143,6 +153,7 @@ if __name__ == "__main__":
         execute_maneuver_node(argument.do_circle)
     except KeyboardInterrupt:
         print("Script stopped by user.")  # Ctrl+c
+
 
 #########################################################
 # first_data = []
