@@ -199,7 +199,7 @@ def finalize_landing(conn, vessel, pid, name) -> None:
     vessel.control.sas_mode = conn.space_center.SASMode.stability_assist
 
 
-def post_touch_down(vessel):
+def post_touch_down(vessel) -> None:
     time.sleep(3)
     print("AG0: Performing actions after landing")
     vessel.control.toggle_action_group(0)
@@ -218,7 +218,7 @@ def main() -> None:
         print("AG1 should be connected to 'Parachutes'")
         print("AG2 should be connected to 'Jettison Heat Shield'")
         print("AG3 should be connected to 'Activating Landing Engine'")
-        print("AG0 should be connected to any actions after landing\n")
+        print("AG0 can be connected to any actions after landing\n")
         
         conn = connect_to_krpc()
         vessel = setup_vessel(conn)

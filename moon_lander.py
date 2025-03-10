@@ -4,6 +4,7 @@ import math
 from simple_pid import PID
 import argparse
 
+
 def str2bool(v: str) -> bool:
     if isinstance(v, bool):
         return v
@@ -14,6 +15,7 @@ def str2bool(v: str) -> bool:
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
+
 def commandLine() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description = "Mun lander script")
     parser.add_argument("-V", "--version", action='version', version='%(prog)s 1.0')
@@ -21,8 +23,10 @@ def commandLine() -> argparse.Namespace:
     parser.add_argument('--deorbit', type=str2bool, nargs='?', const=True, default=False, help='Auto deorbit the lander from a circular orbit (default: False)')
     return parser.parse_args()
 
+
 def connect_to_krpc() -> krpc.client.Client:
     return krpc.connect(name='Mun Lander')
+
 
 def setup_vessel(conn) -> krpc.services.spacecenter.Vessel:
     vessel = conn.space_center.active_vessel
@@ -30,6 +34,7 @@ def setup_vessel(conn) -> krpc.services.spacecenter.Vessel:
     time.sleep(1)
     vessel.control.sas_mode = conn.space_center.SASMode.retrograde
     return vessel
+
 
 # def semi_major_axis(T, M) -> float:
 #     G = 6.67430e-11  # gravitational constant
@@ -41,6 +46,7 @@ def setup_vessel(conn) -> krpc.services.spacecenter.Vessel:
 #     # M = mass of the central body in kg
 #     # semi_major_axis(T, M)
 
+
 def calculate_deorbit_parameters(vessel, body) -> float:
     mu = body.gravitational_parameter  # GM in m^3/s^2
     body_radius = body.equatorial_radius
@@ -51,6 +57,7 @@ def calculate_deorbit_parameters(vessel, body) -> float:
     delta_v = math.sqrt(mu/r2) * (1 - math.sqrt((2 * r1) / (r1 + r2)))  # Delta_v2 https://www.wikiwand.com/en/articles/Hohmann_transfer_orbit
     return delta_v
 
+
 def calculate_burn_time(vessel, delta_v, g) -> float:
     F = vessel.available_thrust  # Available thrust of the vessel
     Isp = vessel.specific_impulse * g  # Specific impulse adjusted for gravity
@@ -58,6 +65,7 @@ def calculate_burn_time(vessel, delta_v, g) -> float:
     m1 = m0 / math.exp(delta_v/Isp)  # Final mass after burn
     flow_rate = F / Isp  # Fuel flow rate
     return (m0 - m1) / flow_rate  # Calculate burn time
+
 
 def execute_deorbit_burn(conn, vessel, burn_time) -> None:
     for i in range(5, 0, -1):
@@ -70,6 +78,7 @@ def execute_deorbit_burn(conn, vessel, burn_time) -> None:
     vessel.control.throttle = 0.0  # Cut throttle after burn
     vessel.control.sas_mode = conn.space_center.SASMode.retrograde  # Switch back to retrograde mode because it automatically switches to stability mode
     time.sleep(1)  # Wait for changes to take effect
+
 
 def perform_suicide_burn(vessel, safety_d) -> None:
     state = "armed"
@@ -121,6 +130,7 @@ def perform_suicide_burn(vessel, safety_d) -> None:
         # Sleep for a short duration to prevent excessive CPU usage
         time.sleep(0.1)
 
+
 def finalize_landing(conn, vessel, pid, name) -> None:
     print("\nPerforming final landing")
     vessel.control.sas_mode = conn.space_center.SASMode.radial
@@ -159,6 +169,13 @@ def finalize_landing(conn, vessel, pid, name) -> None:
     vessel.control.throttle = 0
     vessel.control.sas_mode = conn.space_center.SASMode.stability_assist
 
+
+def post_touch_down(vessel) -> None:
+    time.sleep(3)
+    print("AG0: Performing actions after landing")  # extend solar panels, ...
+    vessel.control.toggle_action_group(0)
+
+
 def main() -> None:
     argument = commandLine()
     radar_alt = argument.radar
@@ -187,6 +204,7 @@ def main() -> None:
             execute_deorbit_burn(conn, vessel, burn_time)
         perform_suicide_burn(vessel, safety_d)
         finalize_landing(conn, vessel, pid, body.name)
+        post_touch_down(vessel)
 
     except ZeroDivisionError as e:
         print(f"\nZeroDivisionError -> probably empty fuel tank or engine deactivated: {e}")
@@ -194,6 +212,7 @@ def main() -> None:
         print("\nScript exited by user.")
     except Exception as e:
         print(f"\nAn unexpected error occurred (note: keep navball extended): {e}")
+
 
 if __name__ == "__main__":
     main()
