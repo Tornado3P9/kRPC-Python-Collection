@@ -3,7 +3,7 @@ import time
 import krpc
 import argparse
 
-def str2bool(v):
+def str2bool(v) -> bool:
     if isinstance(v, bool):
         return v
     if v.lower() in ('yes', 'true', 't', 'y', '1'):
@@ -13,7 +13,7 @@ def str2bool(v):
     else:
         raise argparse.ArgumentTypeError('Boolean value expected.')
 
-def commandLine():
+def commandLine() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description = "Rocket launch and circularization burn script")
     parser.add_argument("-V", "--version", action='version', version='%(prog)s 1.0')
     parser.add_argument('--target', type=int, help='target altitude (default: 85000)', required = False, default = 85000) # metavar='target_altitude' instead of 'TA'
@@ -23,11 +23,11 @@ def commandLine():
     # parser.add_argument('--toss', type=int, help='throttle of second stage', required = False, default = 0)
     return parser.parse_args()
 
-def gravity_turn(altitude):
+def gravity_turn(altitude) -> float:
     return 1.48272E-8 * altitude**2 - 0.00229755 * altitude + 90
 
 # Function to check if the current stage is empty
-def is_stage_empty(conn):
+def is_stage_empty(conn) -> bool:
     vessel = conn.space_center.active_vessel
     for part in vessel.parts.in_stage(vessel.control.current_stage):
         for resource in part.resources.all:
