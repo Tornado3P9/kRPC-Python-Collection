@@ -2,7 +2,7 @@ import krpc
 import time
 
 def main():
-    conn = krpc.connect(name='Reentry Maneuver')
+    conn = krpc.connect(name='Kerbin reentry maneuver')
     vessel = conn.space_center.active_vessel
 
     # Clear screen equivalent
@@ -23,20 +23,20 @@ def main():
     vessel.control.toggle_action_group(0)  # (1,2,3,4,5,6,7,8,9,0)
 
     # Arm parachutes
-    do_parachute(conn, vessel)
-
+    do_parachute(vessel)
+    
     # Unlock all
     vessel.control.sas = False
     vessel.control.rcs = False
 
     print("Script exited.")
 
-def do_parachute(conn, vessel):
-    while vessel.flight().surface_altitude > 4000:
+def do_parachute(vessel):
+    while vessel.flight().surface_altitude > 5000:
         time.sleep(1)
     print("Parachutes")
     for parachute in vessel.parts.parachutes:
-        parachute.deploy()
+        parachute.arm()  # .arm() or .deploy()
 
 if __name__ == "__main__":
     main()
