@@ -43,7 +43,7 @@ def is_stage_empty(conn) -> bool:
 #     vessel.control.activate_next_stage()
 
 
-def setup_ui(conn, auto_throttle) -> None:
+def setup_ui(conn, auto_throttle) -> tuple:
     # Access the stock user interface (UI) canvas
     canvas = conn.ui.stock_canvas
     screen_size = canvas.rect_transform.size
@@ -246,7 +246,7 @@ def main() -> None:
     finalize_launch(vessel)
 
 
-def finalize_launch(vessel):
+def finalize_launch(vessel) -> None:
     vessel.auto_pilot.disengage() # Give control back to the pilot
     vessel.control.sas = True  # Activate SAS
     print("Waiting for steering to settle down")
