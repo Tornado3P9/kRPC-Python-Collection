@@ -22,7 +22,6 @@ def commandLine() -> argparse.Namespace:
     parser.add_argument('--compass', type=int, help='horizontal compass direction (default: 90)', required = False, default = 90)
     parser.add_argument('--throttle', type=str2bool, nargs='?', const=True, default=False, help='Auto Throttle (default: False)')
     parser.add_argument('--ag5', type=str2bool, nargs='?', const=True, default=False, help='A boolean flag for Action Group 5 (default: False)') # escape tower or fairing deployment
-    # parser.add_argument('--toss', type=int, help='throttle of second stage', required = False, default = 0)
     return parser.parse_args()
 
 
@@ -39,28 +38,50 @@ def is_stage_empty(conn) -> bool:
         if part.resources.amount('LiquidFuel') > 0:
             return False
     return True
+# if is_stage_empty(conn):
+#     print("Staging...")
+#     vessel.control.activate_next_stage()
 
 
-def main() -> None:
-    argument = commandLine()
-    target_altitude = argument.target
-    compass = argument.compass
-    auto_throttle = argument.throttle
-    ag5 = argument.ag5
-    # toss = argument.toss
+def setup_ui(conn, auto_throttle) -> None:
+    # Access the stock user interface (UI) canvas
+    canvas = conn.ui.stock_canvas
+    screen_size = canvas.rect_transform.size
 
-    conn = krpc.connect(name='Launch into orbit')
-    vessel = conn.space_center.active_vessel
+    # Add a panel to contain the UI elements
+    panel = canvas.add_panel()
+    rect = panel.rect_transform
+    rect.size = (200, 85)
+    rect.position = (screen_size[0]/4, screen_size[1]/2.3)
 
-    # Set up streams for telemetry
+    # Add a button and text
+    button = panel.add_button("Off")
+    button.rect_transform.position = (0, -12)
+    text = panel.add_text("Auto Throttle")
+    text.rect_transform.position = (0, 12)
+    text.color = (1, 1, 1)
+    text.size = 18
+    
+    # Hide UI elements for the beginning
+    panel.visible = False
+    button.visible = False
+
+    # Set up a stream to monitor the throttle button
+    button_clicked = conn.add_stream(getattr, button, 'clicked')
+    
+    return panel, button, text, button_clicked
+
+
+def setup_telemetry_streams(conn, vessel) -> tuple:
     ut = conn.add_stream(getattr, conn.space_center, 'ut')
     altitude = conn.add_stream(getattr, vessel.flight(), 'mean_altitude')
     apoapsis = conn.add_stream(getattr, vessel.orbit, 'apoapsis_altitude')
     # stage_2_resources = vessel.resources_in_decouple_stage(stage=2, cumulative=False)
     # srb_fuel = conn.add_stream(stage_2_resources.amount, 'SolidFuel')
+    return ut, altitude, apoapsis
 
-    # # Pre-launch setup
-    # first_stage = True
+
+def pre_launch_setup(vessel) -> None:
     vessel.control.sas = False
     vessel.control.rcs = False
     vessel.control.throttle = 1.0
@@ -68,10 +89,9 @@ def main() -> None:
     vessel.auto_pilot.target_pitch_and_heading(90, vessel.flight().heading)  # (pitch, yaw)
     vessel.auto_pilot.target_roll = vessel.flight().roll
 
-    # Clear screen equivalent
-    print("\033c", end="")
 
-    # Countdown...
+def launch_sequence(vessel) -> None:
+    print("\033c", end="")  # Clear screen equivalent
     print('3...')
     time.sleep(1)
     print('2...')
@@ -79,9 +99,10 @@ def main() -> None:
     print('1...')
     time.sleep(1)
     print('Launch!')
-    # Activate the first stage
     vessel.control.activate_next_stage()
 
+
+def roll_program(vessel, compass) -> None:
     # After x seconds, set target pitch and heading ("activate roll program")
     count_seconds = 0
     while True:
@@ -96,32 +117,70 @@ def main() -> None:
     vessel.auto_pilot.target_roll = 0
     vessel.auto_pilot.target_pitch_and_heading(90, compass)
 
-    # # Main ascent loop
-    # srbs_separated = False
-    # turn_angle = 0
 
+def main() -> None:
+    # Parse command line arguments
+    argument = commandLine()
+    target_altitude = argument.target  # int
+    compass = argument.compass         # int
+    auto_throttle = argument.throttle  # bool
+    ag5 = argument.ag5                 # bool
+
+    # Connect to KRPC
+    conn = krpc.connect(name='Launch into orbit')
+    vessel = conn.space_center.active_vessel
+    
+    # Setup UI
+    panel, button, text, button_clicked = setup_ui(conn, auto_throttle)
+    
+    # Setup telemetry streams
+    ut, altitude, apoapsis = setup_telemetry_streams(conn, vessel)
+    
+    # Pre-launch setup
+    pre_launch_setup(vessel)
+    
+    # Launch sequence
+    launch_sequence(vessel)
+
+    # Begin roll program for reorienting the vessel pitch and heading
+    roll_program(vessel, compass)
+
+    # Unhide UI elements
+    panel.visible = True
+    button.visible = True
+
+    # Main ascent loop
     print("Gravity turn")
     while True:
         pitch = gravity_turn(altitude())
-        if pitch < 2.0:
-            pitch = 2.0
+        pitch = max(pitch, 2.0)
         if auto_throttle:
             throttle = max(0.55, (1/90) * pitch)
             vessel.control.throttle = throttle
         vessel.auto_pilot.target_pitch_and_heading(pitch, compass)
 
-        # if is_stage_empty(conn):
-        #     print("Staging...")
-        #     vessel.control.activate_next_stage()
-        time.sleep(1)
-
+        # Handle the throttle button being clicked
+        if button_clicked():
+            auto_throttle = not auto_throttle
+            button.text.content = "On" if auto_throttle else "Off"
+            button.clicked = False
+        
         # Decrease throttle when approaching target apoapsis
         if apoapsis() > target_altitude*0.95:
             print('Approaching target apoapsis')
             break
+        
+        time.sleep(0.5)
+    
+    # Stop the button_clicked stream (must happen before removing UI elements)
+    button_clicked.remove()
+    
+    # Remove UI elements
+    button.remove()
+    text.remove()
+    panel.remove()
 
     # Disable engines when target apoapsis is reached
-    vessel.control.throttle = 0.25
     while apoapsis() < target_altitude:
         pass
     print('Target apoapsis reached')
@@ -160,19 +219,7 @@ def main() -> None:
     print('Orientating ship for circularization burn')
     vessel.auto_pilot.reference_frame = node.reference_frame
     vessel.auto_pilot.target_direction = (0, 1, 0)
-    # node = vessel.control.nodes[0]  # Assumes there's at least one maneuver node
-    # current_direction = vessel.flight(vessel.orbit.body.reference_frame).direction
-    # node_direction = node.direction(vessel.orbit.body.reference_frame)
-    # Calculate the pitch difference
-    # current_pitch = math.degrees(math.asin(current_direction[1]))
-    # node_pitch = math.degrees(math.asin(node_direction[1]))
-    # pitch_difference = node_pitch - current_pitch
-    # print(f"Pitch differernce: {pitch_difference:.2f}")
-    # Adjust the pitch
-    # vessel.auto_pilot.target_pitch_and_heading(node_pitch, vessel.flight().heading)
-    # Wait
     time.sleep(5)
-    # vessel.auto_pilot.wait()
 
     # Wait until burn
     print('Waiting until circularization burn')
@@ -194,6 +241,12 @@ def main() -> None:
     vessel.auto_pilot.target_direction = current_orientation
     node.remove()  # Remove maneuver node
     print("Burn finished")
+    
+    # Finalize launch
+    finalize_launch(vessel)
+
+
+def finalize_launch(vessel):
     vessel.auto_pilot.disengage() # Give control back to the pilot
     vessel.control.sas = True  # Activate SAS
     print("Waiting for steering to settle down")
