@@ -25,10 +25,6 @@ def commandLine() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def gravity_turn(altitude) -> float:
-    return 1.48272E-8 * altitude**2 - 0.00229755 * altitude + 90
-
-
 # def is_stage_empty(conn) -> bool:
 #     vessel = conn.space_center.active_vessel
 #     for part in vessel.parts.in_stage(vessel.control.current_stage):
@@ -116,6 +112,10 @@ def roll_program(vessel, compass) -> None:
     print("Roll")
     vessel.auto_pilot.target_roll = 0
     vessel.auto_pilot.target_pitch_and_heading(90, compass)
+
+
+def gravity_turn(altitude) -> float:
+    return 1.48272E-8 * altitude**2 - 0.00229755 * altitude + 90
 
 
 def main() -> None:
