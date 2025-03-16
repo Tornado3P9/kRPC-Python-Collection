@@ -29,15 +29,15 @@ def gravity_turn(altitude) -> float:
     return 1.48272E-8 * altitude**2 - 0.00229755 * altitude + 90
 
 
-def is_stage_empty(conn) -> bool:
-    vessel = conn.space_center.active_vessel
-    for part in vessel.parts.in_stage(vessel.control.current_stage):
-        # for resource in part.resources.all:
-        #     if resource.amount > 0:
-        #         return False
-        if part.resources.amount('LiquidFuel') > 0:
-            return False
-    return True
+# def is_stage_empty(conn) -> bool:
+#     vessel = conn.space_center.active_vessel
+#     for part in vessel.parts.in_stage(vessel.control.current_stage):
+#         # for resource in part.resources.all:
+#         #     if resource.amount > 0:
+#         #         return False
+#         if part.resources.amount('LiquidFuel') > 0:
+#             return False
+#     return True
 # if is_stage_empty(conn):
 #     print("Staging...")
 #     vessel.control.activate_next_stage()
@@ -55,7 +55,7 @@ def setup_ui(conn, auto_throttle) -> tuple:
     rect.position = (screen_size[0]/4, screen_size[1]/2.3)
 
     # Add a button and text
-    button = panel.add_button("Off")
+    button = panel.add_button("On" if auto_throttle else "Off")
     button.rect_transform.position = (0, -12)
     text = panel.add_text("Auto Throttle")
     text.rect_transform.position = (0, 12)
@@ -190,9 +190,9 @@ def main() -> None:
     print('Coasting out of atmosphere')
     while altitude() < 70005:
         time.sleep(1)
-        if altitude() > 62000 and ag5:
+        if altitude() > 65000 and ag5:
             vessel.control.toggle_action_group(5)
-            print("Action group 5 activated above 62 km")
+            print("Action group 5 activated above 65 km")
             ag5 = False
 
     # Plan circularization burn (using vis-viva equation)
