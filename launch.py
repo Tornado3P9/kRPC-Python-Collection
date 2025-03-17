@@ -25,20 +25,6 @@ def commandLine() -> argparse.Namespace:
     return parser.parse_args()
 
 
-# def is_stage_empty(conn) -> bool:
-#     vessel = conn.space_center.active_vessel
-#     for part in vessel.parts.in_stage(vessel.control.current_stage):
-#         # for resource in part.resources.all:
-#         #     if resource.amount > 0:
-#         #         return False
-#         if part.resources.amount('LiquidFuel') > 0:
-#             return False
-#     return True
-# if is_stage_empty(conn):
-#     print("Staging...")
-#     vessel.control.activate_next_stage()
-
-
 def setup_ui(conn, auto_throttle) -> tuple:
     # Access the stock user interface (UI) canvas
     canvas = conn.ui.stock_canvas
@@ -118,6 +104,13 @@ def gravity_turn(altitude) -> float:
     return 1.48272E-8 * altitude**2 - 0.00229755 * altitude + 90
 
 
+def auto_staging(vessel) -> None:
+    if vessel.thrust == 0:
+        print("Thrust is zero, activating next stage.")
+        vessel.control.activate_next_stage()
+        time.sleep(1)  # Wait a bit to avoid rapid staging
+
+
 def main() -> None:
     # Parse command line arguments
     argument = commandLine()
@@ -166,11 +159,15 @@ def main() -> None:
             button.clicked = False
         
         # Decrease throttle when approaching target apoapsis
-        if apoapsis() > target_altitude*0.95:
-            print('Approaching target apoapsis')
+        if apoapsis() > target_altitude:
+            print('Target apoapsis reached')
+            vessel.control.throttle = 0.0
             break
         
-        time.sleep(0.5)
+        # Handle auto staging once thrust is no longer generated
+        auto_staging(vessel)
+        
+        time.sleep(0.1)
     
     # Stop the button_clicked stream (must happen before removing UI elements)
     button_clicked.remove()
@@ -179,12 +176,6 @@ def main() -> None:
     button.remove()
     text.remove()
     panel.remove()
-
-    # Disable engines when target apoapsis is reached
-    while apoapsis() < target_altitude:
-        pass
-    print('Target apoapsis reached')
-    vessel.control.throttle = 0.0
 
     # Wait until out of atmosphere
     print('Coasting out of atmosphere')
@@ -224,9 +215,9 @@ def main() -> None:
     # Wait until burn
     print('Waiting until circularization burn')
     burn_ut = ut() + vessel.orbit.time_to_apoapsis - (burn_time/2.)
-    lead_time = 20
+    lead_time = 40
     conn.space_center.warp_to(burn_ut - lead_time)
-    print('20 seconds...Ready to execute burn')
+    print(f"{lead_time} seconds...Ready to execute burn")
 
     # Execute burn
     time_to_apoapsis = conn.add_stream(getattr, vessel.orbit, 'time_to_apoapsis')
