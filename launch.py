@@ -158,7 +158,7 @@ def main() -> None:
             button.text.content = "On" if auto_throttle else "Off"
             button.clicked = False
         
-        # Decrease throttle when approaching target apoapsis
+        # Stop main loop and disable engines when target apoapsis is reached
         if apoapsis() > target_altitude:
             print('Target apoapsis reached')
             vessel.control.throttle = 0.0
