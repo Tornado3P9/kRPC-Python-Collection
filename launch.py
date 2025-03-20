@@ -18,10 +18,10 @@ def str2bool(v) -> bool:
 def commandLine() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description = "Rocket launch and circularization burn script")
     parser.add_argument("-V", "--version", action='version', version='%(prog)s 1.0')
-    parser.add_argument('--target', type=int, help='target altitude (default: 85000)', required = False, default = 85000) # metavar='target_altitude' instead of 'TA'
+    parser.add_argument('--target', type=int, help='target altitude (default: 90000)', required = False, default = 90000) # metavar='target_altitude' instead of 'TA'
     parser.add_argument('--compass', type=int, help='horizontal compass direction (default: 90)', required = False, default = 90)
-    parser.add_argument('--throttle', type=str2bool, nargs='?', const=True, default=False, help='Auto Throttle (default: False)')
-    parser.add_argument('--ag5', type=str2bool, nargs='?', const=True, default=False, help='A boolean flag for Action Group 5 (default: False)') # escape tower or fairing deployment
+    parser.add_argument('--auto_throttle', type=str2bool, nargs='?', const=True, default=False, help='Auto Throttle (default: False)')
+    parser.add_argument('--ag5', type=str2bool, nargs='?', const=True, default=False, help='A boolean flag for Action Group 5 (escape tower or fairing deployment at 65 km, default: False)')
     return parser.parse_args()
 
 
@@ -89,9 +89,7 @@ def roll_program(vessel, compass) -> None:
     count_seconds = 0
     while True:
         vertical_speed = vessel.flight(vessel.orbit.body.reference_frame).vertical_speed
-        if vertical_speed >= 60:
-            break
-        if count_seconds > 15:
+        if vertical_speed >= 60 or count_seconds > 15:
             break
         count_seconds += 1
         time.sleep(1)
@@ -113,14 +111,23 @@ def auto_staging(vessel) -> None:
 
 def main() -> None:
     # Parse command line arguments
-    argument = commandLine()
-    target_altitude = argument.target  # int
-    compass = argument.compass         # int
-    auto_throttle = argument.throttle  # bool
-    ag5 = argument.ag5                 # bool
+    parsed_args = commandLine()
+    target_altitude: int = parsed_args.target
+    compass: int = parsed_args.compass
+    auto_throttle: float = parsed_args.auto_throttle
+    ag5: float = parsed_args.ag5
 
     # Connect to KRPC
-    conn = krpc.connect(name='Launch into orbit')
+    try:
+        conn = krpc.connect(name='Launch into orbit')
+    except krpc.error.RPCError as e:
+        print(f"An RPC error occurred: {e}")
+        return
+    except Exception as e:
+        print(f"Failed to connect to KRPC: {e}")
+        return
+    
+    # Select active vessel
     vessel = conn.space_center.active_vessel
     
     # Setup UI
@@ -222,7 +229,7 @@ def main() -> None:
     # Execute burn
     time_to_apoapsis = conn.add_stream(getattr, vessel.orbit, 'time_to_apoapsis')
     while time_to_apoapsis() - (burn_time/2.) > 0:
-        pass
+        time.sleep(0.1)
 
     print('Executing burn')
     vessel.control.throttle = 1.0
@@ -242,6 +249,10 @@ def finalize_launch(vessel) -> None:
     vessel.control.sas = True  # Activate SAS
     print("Waiting for steering to settle down")
     time.sleep(3)
+    orbit = vessel.orbit
+    print(f"  Apoapsis: {orbit.apoapsis_altitude:.2f} m, Periapsis: {orbit.periapsis_altitude:.2f} m"
+        f"\n  Semi-major axis: {orbit.semi_major_axis:.2f} m, Eccentricity: {orbit.eccentricity:.4f}"
+        f"\n  Inclination: {orbit.inclination:.2f} degrees")
     print("Launch complete")
 
 
