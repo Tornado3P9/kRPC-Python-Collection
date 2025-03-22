@@ -2,6 +2,7 @@ import math
 import time
 import krpc
 import argparse
+from scipy.optimize import minimize
 
 
 def str2bool(v) -> bool:
@@ -109,12 +110,11 @@ def auto_staging(vessel) -> None:
         time.sleep(1)  # Wait a bit to avoid rapid staging
 
 
-def current_twr(vessel) -> float:
-    """ calculate thrust-to-weight ratio """
-    thrust = vessel.available_thrust
+def twr_error(throttle, vessel, target_twr) -> float:
+    thrust = vessel.available_thrust * throttle
     weight = vessel.mass * vessel.orbit.body.surface_gravity
-    theoretical_twr = thrust / weight
-    return theoretical_twr * vessel.control.throttle
+    current_twr = thrust / weight
+    return (current_twr - target_twr) ** 2
 
 
 def main() -> None:
@@ -158,14 +158,25 @@ def main() -> None:
         panel.visible = True
         button.visible = True
         
+        # Auto throttle constant
+        target_twr = 1.6
+        
         # Main ascent loop
         print("Gravity turn")
         while True:
             pitch = gravity_turn(altitude())
             pitch = max(pitch, 2.0)
             if auto_throttle:
-                throttle = max(0.55, (1/90) * pitch)
-                vessel.control.throttle = throttle
+                # throttle = max(0.55, (1/90) * pitch)
+                # vessel.control.throttle = throttle
+                
+                # Initial throttle
+                initial_throttle = vessel.control.throttle
+                # Optimize throttle to minimize TWR error
+                result = minimize(twr_error, initial_throttle, args=(vessel, target_twr), bounds=[(0, 1)])
+                # Set the throttle
+                vessel.control.throttle = result.x[0]
+
             vessel.auto_pilot.target_pitch_and_heading(pitch, compass)
 
             # Handle the throttle button being clicked
@@ -215,7 +226,7 @@ def main() -> None:
 
         # Calculate burn time (using rocket equation)
         F = vessel.available_thrust
-        Isp = vessel.specific_impulse * 9.82
+        Isp = vessel.specific_impulse * vessel.orbit.body.surface_gravity
         m0 = vessel.mass
         m1 = m0 / math.exp(delta_v/Isp)
         flow_rate = F / Isp
