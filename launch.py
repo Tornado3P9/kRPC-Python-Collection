@@ -1,8 +1,24 @@
 import math
+import os
 import time
 import krpc
 import argparse
 from scipy.optimize import minimize
+# import logging
+
+
+# def setup_logging():
+#     logging.basicConfig(level=logging.INFO, format='%(asctime)s.%(msecs)03d %(levelname)s - %(message)s', datefmt='%H:%M:%S')
+
+
+def clear_screen():
+    # print("\033c", end="")  # Clear screen equivalent on Unix-like systems
+    try:
+        os.system('clear' if os.name == 'posix' else 'cls')
+    except OSError as e:
+        print(f"An OSError occurred in clear_screen(): {e}")
+    except Exception as e:
+        print(f"An error occurred in clear_screen(): {e}")
 
 
 def str2bool(v) -> bool:
@@ -74,14 +90,13 @@ def pre_launch_setup(vessel) -> None:
 
 
 def launch_sequence(vessel) -> None:
-    print("\033c", end="")  # Clear screen equivalent
-    print('3...')
+    print("...3")
     time.sleep(1)
-    print('2...')
+    print("...2")
     time.sleep(1)
-    print('1...')
+    print("...1")
     time.sleep(1)
-    print('Launch!')
+    print("Launch!")
     vessel.control.activate_next_stage()
 
 
@@ -118,6 +133,8 @@ def twr_error(throttle, vessel, target_twr) -> float:
 
 
 def main() -> None:
+    clear_screen()
+    
     try:
         # Parse command line arguments
         parsed_args = commandLine()
@@ -187,7 +204,7 @@ def main() -> None:
             
             # Stop main loop and disable engines when target apoapsis is reached
             if apoapsis() > target_altitude:
-                print('Target apoapsis reached')
+                print("Target apoapsis reached")
                 vessel.control.throttle = 0.0
                 break
             
@@ -203,18 +220,22 @@ def main() -> None:
         button.remove()
         text.remove()
         panel.remove()
-
+        
         # Wait until out of atmosphere
-        print('Coasting out of atmosphere')
-        while altitude() < 70005:
-            time.sleep(1)
-            if altitude() > 65000 and ag5:
+        print("Coasting out of atmosphere")
+        while altitude() < 70_050:
+            if ag5 and altitude() > 65_000:
                 vessel.control.toggle_action_group(5)
                 print("Action group 5 activated above 65 km")
                 ag5 = False
+            time.sleep(1)
+
+        # Stop obsolete launch streams
+        apoapsis.remove()
+        altitude.remove()
 
         # Plan circularization burn (using vis-viva equation)
-        print('Planning circularization burn')
+        print("Planning circularization burn")
         mu = vessel.orbit.body.gravitational_parameter
         r = vessel.orbit.apoapsis
         a1 = vessel.orbit.semi_major_axis
@@ -234,13 +255,13 @@ def main() -> None:
         print(f"Circularization burn time: {burn_time:.2f}s")
 
         # Orientate ship
-        print('Orientating ship for circularization burn')
+        print("Orientating ship for circularization burn")
         vessel.auto_pilot.reference_frame = node.reference_frame
         vessel.auto_pilot.target_direction = (0, 1, 0)
         time.sleep(5)
 
         # Wait until burn
-        print('Waiting until circularization burn')
+        print("Waiting until circularization burn")
         burn_ut = ut() + vessel.orbit.time_to_apoapsis - (burn_time/2.)
         lead_time = 40
         conn.space_center.warp_to(burn_ut - lead_time)
@@ -248,7 +269,7 @@ def main() -> None:
 
         # Execute burn
         time_to_apoapsis = conn.add_stream(getattr, vessel.orbit, 'time_to_apoapsis')
-        while time_to_apoapsis() - (burn_time/2.) > 0:
+        while time_to_apoapsis() - (burn_time / 2) > 0:
             time.sleep(0.1)
 
         print('Executing burn')
@@ -288,4 +309,4 @@ if __name__ == '__main__':
     try:
         main()
     except KeyboardInterrupt:
-        print("\nLaunch sequence interrupted by user.")
+        print("\nLaunch sequence interrupted by user")
