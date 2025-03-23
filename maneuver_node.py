@@ -1,7 +1,18 @@
+import os
 import krpc
 import time
 import math
 import argparse
+
+
+def clear_screen():
+    # print("\033c", end="")  # Clear screen equivalent on Unix-like systems
+    try:
+        os.system('clear' if os.name == 'posix' else 'cls')
+    except OSError as e:
+        print(f"An OSError occurred in clear_screen(): {e}")
+    except Exception as e:
+        print(f"An error occurred in clear_screen(): {e}")
 
 
 def commandLine() -> argparse.Namespace:
@@ -12,6 +23,7 @@ def commandLine() -> argparse.Namespace:
 
 
 def execute_maneuver_node() -> None:
+    clear_screen()
     argument = commandLine()
     conn = krpc.connect(name='Maneuver Execution')
     vessel = conn.space_center.active_vessel
@@ -133,7 +145,6 @@ def vector_angle(v1, v2) -> float:
 
 if __name__ == "__main__":
     try:
-        print("\033c", end="")
         execute_maneuver_node()
     except ZeroDivisionError as e:
         print(f"\nZeroDivisionError -> probably empty fuel tank or engine deactivated: {e}")

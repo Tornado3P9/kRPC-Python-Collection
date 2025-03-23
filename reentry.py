@@ -1,12 +1,17 @@
+import os
 import krpc
 import time
 
+
+def clear_screen():
+    # print("\033c", end="")  # Clear screen equivalent on Unix-like systems
+    os.system('clear' if os.name == 'posix' else 'cls')
+
+
 def main():
+    clear_screen()
     conn = krpc.connect(name='Kerbin reentry maneuver')
     vessel = conn.space_center.active_vessel
-
-    # Clear screen equivalent
-    print("\033c", end="")
 
     print("Started reentry maneuver")
     vessel.control.sas = True
@@ -31,12 +36,14 @@ def main():
 
     print("Script exited.")
 
+
 def do_parachute(vessel):
     while vessel.flight().surface_altitude > 5000:
         time.sleep(1)
     print("Parachutes")
     for parachute in vessel.parts.parachutes:
         parachute.arm()  # .arm() or .deploy()
+
 
 if __name__ == "__main__":
     main()

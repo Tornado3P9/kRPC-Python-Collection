@@ -1,8 +1,19 @@
+import os
 import krpc
 import time
 import math
 from simple_pid import PID
 import argparse
+
+
+def clear_screen():
+    # print("\033c", end="")  # Clear screen equivalent on Unix-like systems
+    try:
+        os.system('clear' if os.name == 'posix' else 'cls')
+    except OSError as e:
+        print(f"An OSError occurred in clear_screen(): {e}")
+    except Exception as e:
+        print(f"An error occurred in clear_screen(): {e}")
 
 
 def str2bool(v: str) -> bool:
@@ -177,6 +188,7 @@ def post_touch_down(vessel) -> None:
 
 
 def main() -> None:
+    clear_screen()
     argument = commandLine()
     radar_alt = argument.radar
     deorbit = argument.deorbit
@@ -185,8 +197,6 @@ def main() -> None:
     safety_d = 30 + radar_alt
 
     try:
-        print("\033c", end="")  # Clear screen equivalent
-
         conn = connect_to_krpc()
         vessel = setup_vessel(conn)
         body = vessel.orbit.body  # Solar body (e.g. Mun)
