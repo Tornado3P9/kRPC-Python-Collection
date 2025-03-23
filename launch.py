@@ -65,7 +65,7 @@ def setup_ui(conn, auto_throttle) -> tuple:
     return panel, button, text, button_clicked
 
 
-def setup_telemetry_streams(conn, vessel) -> tuple[float, float]:
+def setup_telemetry_streams(conn, vessel) -> tuple:
     # ut = conn.add_stream(getattr, conn.space_center, 'ut')
     altitude = conn.add_stream(getattr, vessel.flight(), 'mean_altitude')
     apoapsis = conn.add_stream(getattr, vessel.orbit, 'apoapsis_altitude')
@@ -253,7 +253,6 @@ def main() -> None:
         time_to_apoapsis = conn.add_stream(getattr, vessel.orbit, 'time_to_apoapsis')
         while time_to_apoapsis() - half_burn_time > 0:
             pass
-        time_to_apoapsis.remove()
 
         print('Executing burn')
         vessel.control.throttle = 1.0
@@ -261,6 +260,7 @@ def main() -> None:
         vessel.control.throttle = 0.0
         
         print("Burn finished")
+        time_to_apoapsis.remove()
         node.remove()  # Remove maneuver node
         vessel.auto_pilot.disengage() # Give control back to the pilot
         vessel.control.sas = True  # Activate SAS
