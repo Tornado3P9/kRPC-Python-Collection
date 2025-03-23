@@ -3,15 +3,9 @@ import os
 import time
 import krpc
 import argparse
-from scipy.optimize import minimize
-# import logging
 
 
-# def setup_logging():
-#     logging.basicConfig(level=logging.INFO, format='%(asctime)s.%(msecs)03d %(levelname)s - %(message)s', datefmt='%H:%M:%S')
-
-
-def clear_screen():
+def clear_screen() -> None:
     # print("\033c", end="")  # Clear screen equivalent on Unix-like systems
     try:
         os.system('clear' if os.name == 'posix' else 'cls')
@@ -71,13 +65,13 @@ def setup_ui(conn, auto_throttle) -> tuple:
     return panel, button, text, button_clicked
 
 
-def setup_telemetry_streams(conn, vessel) -> tuple:
-    ut = conn.add_stream(getattr, conn.space_center, 'ut')
+def setup_telemetry_streams(conn, vessel) -> tuple[float, float]:
+    # ut = conn.add_stream(getattr, conn.space_center, 'ut')
     altitude = conn.add_stream(getattr, vessel.flight(), 'mean_altitude')
     apoapsis = conn.add_stream(getattr, vessel.orbit, 'apoapsis_altitude')
     # stage_2_resources = vessel.resources_in_decouple_stage(stage=2, cumulative=False)
     # srb_fuel = conn.add_stream(stage_2_resources.amount, 'SolidFuel')
-    return ut, altitude, apoapsis
+    return altitude, apoapsis
 
 
 def pre_launch_setup(vessel) -> None:
@@ -118,13 +112,6 @@ def gravity_turn(altitude) -> float:
     return 1.48272E-8 * altitude**2 - 0.00229755 * altitude + 90
 
 
-def auto_staging(vessel) -> None:
-    if vessel.thrust == 0:
-        print("Thrust is zero, activating next stage.")
-        vessel.control.activate_next_stage()
-        time.sleep(1)  # Wait a bit to avoid rapid staging
-
-
 def twr_error(throttle, vessel, target_twr) -> float:
     thrust = vessel.available_thrust * throttle
     weight = vessel.mass * vessel.orbit.body.surface_gravity
@@ -135,20 +122,20 @@ def twr_error(throttle, vessel, target_twr) -> float:
 def main() -> None:
     clear_screen()
     
-    try:
-        # Parse command line arguments
-        parsed_args = commandLine()
-        target_altitude: int = parsed_args.target
-        compass: int = parsed_args.compass
-        auto_throttle: bool = parsed_args.auto_throttle
-        ag5: bool = parsed_args.ag5
+    # Parse command line arguments
+    parsed_args = commandLine()
+    target_altitude: int = parsed_args.target
+    compass: int = parsed_args.compass
+    auto_throttle: bool = parsed_args.auto_throttle
+    ag5: bool = parsed_args.ag5
 
+    # Import heavy module after parsing args
+    from scipy.optimize import minimize
+    
+    try:
         # Connect to KRPC
         try:
             conn = krpc.connect(name='Launch into orbit')
-        except krpc.error.RPCError as e:
-            print(f"A KRPC error occurred during krpc.connect(): {e}")
-            return
         except Exception as e:
             print(f"Failed to connect to KRPC: {e}")
             return
@@ -160,7 +147,7 @@ def main() -> None:
         panel, button, text, button_clicked = setup_ui(conn, auto_throttle)
         
         # Setup telemetry streams
-        ut, altitude, apoapsis = setup_telemetry_streams(conn, vessel)
+        altitude, apoapsis = setup_telemetry_streams(conn, vessel)
         
         # Pre-launch setup
         pre_launch_setup(vessel)
@@ -180,23 +167,20 @@ def main() -> None:
         
         # Main ascent loop
         print("Gravity turn")
+        at_counter = 0  # damper for calling minimize() every 0.5s
         while True:
             pitch = gravity_turn(altitude())
             pitch = max(pitch, 2.0)
             vessel.auto_pilot.target_pitch_and_heading(pitch, compass)
             
-            if auto_throttle:
-                # # Version A:
+            at_counter += 1
+            if auto_throttle and at_counter == 5:
+                at_counter = 0
+                # Change throttle proportionally to the pitch of the rocket
                 # throttle = max(0.55, (1/90) * pitch)
-                # vessel.control.throttle = throttle
-                
-                # # Version B:
-                # Initial throttle
-                initial_throttle = vessel.control.throttle
-                # Optimize throttle to minimize TWR error
-                result = minimize(twr_error, initial_throttle, args=(vessel, target_twr), bounds=[(0, 1)])
-                # Set the throttle
-                vessel.control.throttle = result.x[0]
+                # Change throttle by minimizing TWR error
+                throttle = minimize(twr_error, vessel.control.throttle, args=(vessel, target_twr), bounds=[(0, 1)]).x[0]
+                vessel.control.throttle = throttle
 
             # Handle the throttle button being clicked
             if button_clicked():
@@ -211,14 +195,16 @@ def main() -> None:
                 break
             
             # Handle auto staging once thrust is no longer generated
-            auto_staging(vessel)
+            if vessel.thrust == 0:
+                print("Thrust is zero, activating next stage.")
+                vessel.control.activate_next_stage()
+                time.sleep(1)  # Wait a bit to avoid rapid staging
             
             time.sleep(0.1)
         
-        # Stop the button_clicked stream (must happen before removing UI elements)
+        # Stop Redundant Streams and Remove UI elements
+        apoapsis.remove()
         button_clicked.remove()
-        
-        # Remove UI elements
         button.remove()
         text.remove()
         panel.remove()
@@ -231,9 +217,6 @@ def main() -> None:
                 print("Action group 5 activated above 65 km")
                 ag5 = False
             time.sleep(1)
-
-        # Stop obsolete launch streams
-        apoapsis.remove()
         altitude.remove()
 
         # Plan circularization burn (using vis-viva equation)
@@ -245,7 +228,7 @@ def main() -> None:
         v1 = math.sqrt(mu * ((2 / r) - (1 / a1)))
         v2 = math.sqrt(mu * ((2 / r) - (1 / a2)))
         delta_v = v2 - v1
-        node = vessel.control.add_node(ut() + vessel.orbit.time_to_apoapsis, prograde=delta_v)
+        node = vessel.control.add_node(conn.space_center.ut + vessel.orbit.time_to_apoapsis, prograde=delta_v)
 
         # Calculate burn time (using rocket equation)
         F = vessel.available_thrust
@@ -256,38 +239,35 @@ def main() -> None:
         burn_time = (m0 - m1) / flow_rate
         print(f"Circularization burn time: {burn_time:.2f}s")
 
-        # Orientate ship
-        print("Orientating ship for circularization burn")
+        print("Set new ship orientation")
         vessel.auto_pilot.reference_frame = node.reference_frame
         vessel.auto_pilot.target_direction = (0, 1, 0)
 
-        # Wait until burn
-        print("Waiting until circularization burn")
-        burn_ut = ut() + vessel.orbit.time_to_apoapsis - (burn_time/2.)
+        print("Time warp to circularization maneuver")
+        half_burn_time = burn_time / 2
+        burn_ut = conn.space_center.ut + vessel.orbit.time_to_apoapsis - half_burn_time
         lead_time = 50
         conn.space_center.warp_to(burn_ut - lead_time)
-        print(f"{lead_time} seconds...Ready to execute burn")
-
-        # Execute burn
+        
+        print(f"{lead_time} seconds...Ready to execute circularization burn")
         time_to_apoapsis = conn.add_stream(getattr, vessel.orbit, 'time_to_apoapsis')
-        while time_to_apoapsis() - (burn_time / 2) > 0:
-            time.sleep(0.1)
+        while time_to_apoapsis() - half_burn_time > 0:
+            pass
+        time_to_apoapsis.remove()
 
         print('Executing burn')
         vessel.control.throttle = 1.0
-        # start_time = ut()
-        # while ut() - start_time < burn_time:
-        #     if auto_staging(vessel):
-        #         burn_time += adjust_time
         time.sleep(burn_time)
         vessel.control.throttle = 0.0
-        current_orientation = vessel.flight().direction
-        vessel.auto_pilot.target_direction = current_orientation
-        node.remove()  # Remove maneuver node
-        print("Burn finished")
         
-        # Finalize launch
-        finalize_launch(vessel)
+        print("Burn finished")
+        node.remove()  # Remove maneuver node
+        vessel.auto_pilot.disengage() # Give control back to the pilot
+        vessel.control.sas = True  # Activate SAS
+        vessel.control.sas_mode = conn.space_center.SASMode.stability_assist
+        print("Waiting for steering to settle down")
+        time.sleep(3)
+        finalize_launch(vessel.orbit)
         
     except krpc.error.RPCError as e:
         print(f"A KRPC error occurred: {e}")
@@ -295,12 +275,7 @@ def main() -> None:
         print(f"An unexpected error occurred (note: keep navball extended): {e}")
 
 
-def finalize_launch(vessel) -> None:
-    vessel.auto_pilot.disengage() # Give control back to the pilot
-    vessel.control.sas = True  # Activate SAS
-    print("Waiting for steering to settle down")
-    time.sleep(3)
-    orbit = vessel.orbit
+def finalize_launch(orbit) -> None:
     print(f"  Apoapsis: {orbit.apoapsis_altitude/1000:.3f} km, Periapsis: {orbit.periapsis_altitude/1000:.3f} km"
         f"\n  Semi-major axis: {orbit.semi_major_axis/1000:.3f} km, Eccentricity: {orbit.eccentricity:.4f}"
         f"\n  Inclination: {orbit.inclination:.2f} degrees")
