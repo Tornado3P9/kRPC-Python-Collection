@@ -6,5 +6,6 @@ readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "krpc>=0.5.4",
+    "scipy>=1.15.2",
     "simple-pid>=2.0.1",
 ]
