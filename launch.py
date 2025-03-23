@@ -183,18 +183,20 @@ def main() -> None:
         while True:
             pitch = gravity_turn(altitude())
             pitch = max(pitch, 2.0)
+            vessel.auto_pilot.target_pitch_and_heading(pitch, compass)
+            
             if auto_throttle:
+                # # Version A:
                 # throttle = max(0.55, (1/90) * pitch)
                 # vessel.control.throttle = throttle
                 
+                # # Version B:
                 # Initial throttle
                 initial_throttle = vessel.control.throttle
                 # Optimize throttle to minimize TWR error
                 result = minimize(twr_error, initial_throttle, args=(vessel, target_twr), bounds=[(0, 1)])
                 # Set the throttle
                 vessel.control.throttle = result.x[0]
-
-            vessel.auto_pilot.target_pitch_and_heading(pitch, compass)
 
             # Handle the throttle button being clicked
             if button_clicked():
@@ -240,8 +242,8 @@ def main() -> None:
         r = vessel.orbit.apoapsis
         a1 = vessel.orbit.semi_major_axis
         a2 = r
-        v1 = math.sqrt(mu*((2./r)-(1./a1)))
-        v2 = math.sqrt(mu*((2./r)-(1./a2)))
+        v1 = math.sqrt(mu * ((2 / r) - (1 / a1)))
+        v2 = math.sqrt(mu * ((2 / r) - (1 / a2)))
         delta_v = v2 - v1
         node = vessel.control.add_node(ut() + vessel.orbit.time_to_apoapsis, prograde=delta_v)
 
@@ -258,12 +260,11 @@ def main() -> None:
         print("Orientating ship for circularization burn")
         vessel.auto_pilot.reference_frame = node.reference_frame
         vessel.auto_pilot.target_direction = (0, 1, 0)
-        time.sleep(5)
 
         # Wait until burn
         print("Waiting until circularization burn")
         burn_ut = ut() + vessel.orbit.time_to_apoapsis - (burn_time/2.)
-        lead_time = 40
+        lead_time = 50
         conn.space_center.warp_to(burn_ut - lead_time)
         print(f"{lead_time} seconds...Ready to execute burn")
 
@@ -276,7 +277,8 @@ def main() -> None:
         vessel.control.throttle = 1.0
         # start_time = ut()
         # while ut() - start_time < burn_time:
-        #     auto_staging(vessel)
+        #     if auto_staging(vessel):
+        #         burn_time += adjust_time
         time.sleep(burn_time)
         vessel.control.throttle = 0.0
         current_orientation = vessel.flight().direction
