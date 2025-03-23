@@ -19,8 +19,8 @@ def str2bool(v) -> bool:
 def commandLine() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description = "Rocket launch and circularization burn script")
     parser.add_argument("-V", "--version", action='version', version='%(prog)s 1.0')
-    parser.add_argument('--target', type=int, help='target altitude (default: 90000)', required = False, default = 90000) # metavar='target_altitude' instead of 'TA'
-    parser.add_argument('--compass', type=int, help='horizontal compass direction in degrees (default: 90)', required = False, default = 90)
+    parser.add_argument('--target', type=int, required = False, default = 90000, help='target altitude (default: 90000)')
+    parser.add_argument('--compass', type=int, required = False, default = 90, help='horizontal compass direction in degrees (default: 90)')
     parser.add_argument('--auto_throttle', type=str2bool, nargs='?', const=True, default=False, help='Auto Throttle (default: False)')
     parser.add_argument('--ag5', type=str2bool, nargs='?', const=True, default=False, help='A boolean flag for Action Group 5: escape tower or fairing deployment at 65 km (default: False)')
     return parser.parse_args()
@@ -123,8 +123,8 @@ def main() -> None:
         parsed_args = commandLine()
         target_altitude: int = parsed_args.target
         compass: int = parsed_args.compass
-        auto_throttle: float = parsed_args.auto_throttle
-        ag5: float = parsed_args.ag5
+        auto_throttle: bool = parsed_args.auto_throttle
+        ag5: bool = parsed_args.ag5
 
         # Connect to KRPC
         try:
@@ -253,6 +253,9 @@ def main() -> None:
 
         print('Executing burn')
         vessel.control.throttle = 1.0
+        # start_time = ut()
+        # while ut() - start_time < burn_time:
+        #     auto_staging(vessel)
         time.sleep(burn_time)
         vessel.control.throttle = 0.0
         current_orientation = vessel.flight().direction
