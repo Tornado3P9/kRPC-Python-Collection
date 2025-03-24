@@ -32,7 +32,7 @@ def commandLine() -> argparse.Namespace:
     parser.add_argument('--target', type=int, required = False, default = 90000, help='target altitude (default: 90000)')
     parser.add_argument('--compass', type=int, required = False, default = 90, help='horizontal compass direction in degrees (default: 90)')
     parser.add_argument('--auto_throttle', type=str2bool, nargs='?', const=True, default=False, help='Auto Throttle (default: False)')
-    parser.add_argument('--ag5', type=str2bool, nargs='?', const=True, default=False, help='A boolean flag for Action Group 5: escape tower or fairing deployment at 65 km (default: False)')
+    parser.add_argument('--ag5', type=str2bool, nargs='?', const=True, default=False, help='A boolean flag for Action Group 5: escape tower or fairing deployment above 65 km (default: False)')
     return parser.parse_args()
 
 
@@ -120,26 +120,29 @@ def twr_error(throttle, vessel, target_twr) -> float:
 
 
 def main() -> None:
-    clear_screen()
-    
     # Parse command line arguments
     parsed_args = commandLine()
     target_altitude: int = parsed_args.target
     compass: int = parsed_args.compass
     auto_throttle: bool = parsed_args.auto_throttle
     ag5: bool = parsed_args.ag5
-
+    
+    clear_screen()
+    
+    # Connect to KRPC
+    try:
+        conn = krpc.connect(name='Launch into orbit')
+    except krpc.error.RPCError as e:
+        print(f"A KRPC error occurred during krpc.connect(): {e}")
+        return
+    except Exception as e:
+        print(f"Failed to connect to KRPC: {e}")
+        return
+    
     # Import heavy module after parsing args
     from scipy.optimize import minimize
     
     try:
-        # Connect to KRPC
-        try:
-            conn = krpc.connect(name='Launch into orbit')
-        except Exception as e:
-            print(f"Failed to connect to KRPC: {e}")
-            return
-        
         # Select active vessel
         vessel = conn.space_center.active_vessel
         
@@ -252,7 +255,7 @@ def main() -> None:
         print(f"{lead_time} seconds...Ready to execute circularization burn")
         time_to_apoapsis = conn.add_stream(getattr, vessel.orbit, 'time_to_apoapsis')
         while time_to_apoapsis() - half_burn_time > 0:
-            pass
+            pass  # change to time.sleep(0.1) if your CPU Fan gets too loud
 
         print('Executing burn')
         vessel.control.throttle = 1.0
