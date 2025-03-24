@@ -136,7 +136,7 @@ def perform_suicide_burn(vessel, safety_d) -> None:
         elif state == "active":
             vessel.control.throttle = ideal_throttle
 
-        print(f"\rIdeal_thrtl: {ideal_throttle * 100:.2f}%, tti: {time_to_impact:.2f}s, burn_t: {burn_time:.2f}s   ", end='')
+        print(f"\rIdeal_thrtl: {ideal_throttle * 100:5.2f}%, tti: {time_to_impact:5.2f}s, burn_t: {burn_time:4.2f}s", end=' ')
 
         # Sleep for a short duration to prevent excessive CPU usage
         time.sleep(0.1)
@@ -161,7 +161,7 @@ def finalize_landing(conn, vessel, pid, name) -> None:
         #     print("The vessel has splashed down!")
         #     break
         else:
-            print(f"\rVessel in flight at altitude (radar sensor): {vessel.flight().surface_altitude:.2f} m", end='')  # last value is lander radar height at vessel
+            print(f"\rVessel in flight at altitude (radar sensor): {vessel.flight().surface_altitude:.2f} m", end='  ')  # last value is lander radar height at vessel
             # when velocity low, retrograde marker becomes inactive, so wait a bit
             time_now = conn.space_center.ut
             if change_sas_state and (time_now - time_init) > 2.0:
