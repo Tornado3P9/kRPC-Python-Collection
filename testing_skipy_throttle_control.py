@@ -12,7 +12,7 @@ def twr_error(throttle, vessel, target_twr):
 def main() -> None:
     try:
         # Connect to the game
-        conn = krpc.connect(name='MPC Controller')
+        conn = krpc.connect(name='Scipy Controller')
         vessel = conn.space_center.active_vessel
 
         target_twr = 1.3
@@ -43,7 +43,7 @@ def main() -> None:
             time.sleep(0.1)
 
     except KeyboardInterrupt:
-        print("\nMPC Controller stopped.")
+        print("\nScipy Controller stopped.")
 
 
 if __name__ == "__main__":
