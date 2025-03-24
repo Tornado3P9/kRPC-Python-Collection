@@ -23,11 +23,12 @@ def commandLine() -> argparse.Namespace:
 
 
 def execute_maneuver_node() -> None:
-    clear_screen()
     argument = commandLine()
     conn = krpc.connect(name='Maneuver Execution')
     vessel = conn.space_center.active_vessel
     vessel.control.sas = False
+    
+    clear_screen()
     
     if argument.circularize_at:
         planning_circularization_burn(conn, vessel, argument.circularize_at)

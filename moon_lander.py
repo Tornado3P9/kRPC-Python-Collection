@@ -188,11 +188,12 @@ def post_touch_down(vessel) -> None:
 
 
 def main() -> None:
-    clear_screen()
     argument = commandLine()
     radar_alt = argument.radar
     deorbit = argument.deorbit
 
+    clear_screen()
+    
     # safety_distance: stop 30 meters above ground, also taking into account that the radar is positioned at 2.7 meters on my lander
     safety_d = 30 + radar_alt
 

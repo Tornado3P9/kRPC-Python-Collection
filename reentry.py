@@ -4,7 +4,6 @@ import time
 
 
 def clear_screen():
-    # print("\033c", end="")  # Clear screen equivalent on Unix-like systems
     os.system('clear' if os.name == 'posix' else 'cls')
 
 
