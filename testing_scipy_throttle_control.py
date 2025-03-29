@@ -40,7 +40,7 @@ def main() -> None:
             print(f"\rThrottle set to: {result.x[0]:.2f} to maintain TWR of {target_twr} ", end='')
 
             # Wait for a short period before recalculating
-            time.sleep(0.1)
+            time.sleep(0.5)
 
     except KeyboardInterrupt:
         print("\nScipy Controller stopped.")

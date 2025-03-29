@@ -5,6 +5,7 @@ import krpc
 import argparse
 from simple_pid import PID
 
+
 def clear_screen() -> None:
     # print("\033c", end="")  # Clear screen equivalent on Unix-like systems
     try:
@@ -113,9 +114,10 @@ def gravity_turn(altitude) -> float:
 
 
 def twr_error(vessel, target_twr) -> float:
-    thrust = vessel.available_thrust * vessel.control.throttle
-    weight = vessel.mass * vessel.orbit.body.surface_gravity
-    current_twr = thrust / weight
+    # thrust = vessel.available_thrust * vessel.control.throttle
+    # weight = vessel.mass * vessel.orbit.body.surface_gravity
+    # current_twr = thrust / weight
+    current_twr = vessel.thrust / (vessel.mass * vessel.orbit.body.surface_gravity)
     return current_twr - target_twr
 
 
