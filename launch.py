@@ -70,8 +70,6 @@ def setup_telemetry_streams(conn, vessel) -> tuple:
     # ut = conn.add_stream(getattr, conn.space_center, 'ut')
     altitude = conn.add_stream(getattr, vessel.flight(), 'mean_altitude')
     apoapsis = conn.add_stream(getattr, vessel.orbit, 'apoapsis_altitude')
-    # stage_2_resources = vessel.resources_in_decouple_stage(stage=2, cumulative=False)
-    # srb_fuel = conn.add_stream(stage_2_resources.amount, 'SolidFuel')
     return altitude, apoapsis
 
 
@@ -114,10 +112,9 @@ def gravity_turn(altitude) -> float:
 
 
 def twr_error(vessel, target_twr) -> float:
-    # thrust = vessel.available_thrust * vessel.control.throttle
-    # weight = vessel.mass * vessel.orbit.body.surface_gravity
-    # current_twr = thrust / weight
-    current_twr = vessel.thrust / (vessel.mass * vessel.orbit.body.surface_gravity)
+    thrust = vessel.available_thrust * vessel.control.throttle
+    weight = vessel.mass * vessel.orbit.body.surface_gravity
+    current_twr = thrust / weight
     return current_twr - target_twr
 
 
@@ -260,7 +257,7 @@ def main() -> None:
         print(f"{lead_time} seconds...Ready to execute circularization burn")
         time_to_apoapsis = conn.add_stream(getattr, vessel.orbit, 'time_to_apoapsis')
         while time_to_apoapsis() - half_burn_time > 0:
-            pass  # change to time.sleep(0.1) if your CPU Fan gets too loud
+            time.sleep(0.1)
 
         print('Executing burn')
         vessel.control.throttle = 1.0
