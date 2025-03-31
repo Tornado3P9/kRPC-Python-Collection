@@ -73,10 +73,10 @@ def setup_telemetry_streams(conn, vessel) -> tuple:
     return altitude, apoapsis
 
 
-def pre_launch_setup(vessel) -> None:
+def pre_launch_setup(vessel, initial_throttle) -> None:
     vessel.control.sas = False
     vessel.control.rcs = False
-    vessel.control.throttle = 1.0
+    vessel.control.throttle = initial_throttle
     vessel.auto_pilot.engage()
     vessel.auto_pilot.target_pitch_and_heading(90, vessel.flight().heading)  # (pitch, yaw)
     vessel.auto_pilot.target_roll = vessel.flight().roll
@@ -149,7 +149,8 @@ def main() -> None:
         altitude, apoapsis = setup_telemetry_streams(conn, vessel)
         
         # Pre-launch setup
-        pre_launch_setup(vessel)
+        initial_throttle = 1.0
+        pre_launch_setup(vessel, initial_throttle)
         
         # Launch sequence
         launch_sequence(vessel)
@@ -162,9 +163,11 @@ def main() -> None:
         button.visible = True
         
         # Set up the PID controller
-        pid = PID(Kp=0.005, Ki=0.5, Kd=0, setpoint=0)
+        pid = PID(Kp=0.005, Ki=0.5, Kd=0, setpoint=0, auto_mode=False)
         pid.output_limits = (0, 1)  # Throttle limits
         target_twr = 1.6  # Auto throttle constant
+        pid_init = True # In order to prevent accumulated errors before starting the control process,
+                        # i want to Start the controller in manual mode and switch to auto mode when the system is ready.
         
         # Main ascent loop
         print("Gravity turn")
@@ -180,6 +183,9 @@ def main() -> None:
                 # Change throttle by minimizing TWR error using "from scipy.optimize import minimize"
                 # new_throttle = minimize(twr_error, vessel.control.throttle, args=(vessel, target_twr), bounds=[(0, 1)]).x[0]
                 # Change throttle by minimizing TWR error using "from simple_pid import PID"
+                if pid_init:
+                    pid.set_auto_mode(True, last_output=initial_throttle)
+                    pid_init = False
                 new_error = twr_error(vessel, target_twr)
                 new_throttle = pid(new_error)
                 # Set the throttle
@@ -195,6 +201,7 @@ def main() -> None:
             if apoapsis() > target_altitude:
                 print("Target apoapsis reached")
                 vessel.control.throttle = 0.0
+                pid.set_auto_mode(False)
                 break
             
             # Handle auto staging once thrust is no longer generated
