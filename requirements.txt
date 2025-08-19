@@ -1,0 +1,5 @@
+krpc==0.5.4
+numpy==2.2.4
+protobuf==6.30.1
+scipy==1.15.2
+simple-pid==2.0.1
