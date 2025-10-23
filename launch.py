@@ -318,8 +318,8 @@ def target_orbital_velocity(target_orbit):
 
 def kerbin_surface_rotation_speed(launch_latitude=0):
     # Circumference of Kerbin's Equator is (2*π*600000m)
-    # Kerbin Sidereal Day = 21549.425 seconds, or 5 hours, 59 minutes, 9.425 seconds
-    # VRot(φ) = ((2*π*600000m)/21549.425s)*cos(φ)
+    # Time of Kerbin Sidereal Day = 21549.425 seconds, or 5 hours, 59 minutes, 9.425 seconds
+    # VRot(φ) in m/s = ((2*π*r)/T)*cos(φ)
     return ((2 * math.pi * 600_000) / 21549.425) * math.cos(
         math.radians(launch_latitude)
     )
