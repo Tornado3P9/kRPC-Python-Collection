@@ -148,7 +148,7 @@ def main() -> None:
             launch_azimuth_deg = 360 + launch_azimuth_deg
 
         print("#####################")
-        print(f"Target orbital height: {target_altitude/1000:.2f} km")
+        print(f"Target orbital height: {target_altitude / 1000:.2f} km")
         print(f"Target orbital velocity: {Vdest:.2f} m/s")
         print(f"Kerbin surface rotation speed: {Vrot:.2f} m/s")
         print(f"Launch azimuth: {launch_azimuth_deg:.2f}° (for {azimuth_deg:.2f}°)")
@@ -208,11 +208,15 @@ def main() -> None:
 
             # Handle auto staging once thrust is no longer generated
             atc += 1
-            if vessel.thrust == 0 and atc % 10 == 0:
-                atc = 0
-                print("Thrust is zero, activating next stage.")
-                vessel.control.activate_next_stage()
+            if atc % 10 == 0:
                 # Between each staging let one second pass to avoid rapid staging
+                if vessel.thrust == 0:
+                    print("Thrust is zero, activating next stage.")
+                    vessel.control.activate_next_stage()
+                    atc = 0  # this line can be removed
+
+                # Also check and activate action group 5
+                ag5 = check_and_activate_ag5(vessel, altitude(), ag5)
 
             time.sleep(0.1)
 
@@ -226,10 +230,9 @@ def main() -> None:
         # Wait until out of atmosphere
         print("Coasting out of atmosphere")
         while altitude() < 70_050:
-            if ag5 and altitude() > 60_000:
-                vessel.control.toggle_action_group(5)
-                print("Action group 5 activated above 60 km")
-                ag5 = False
+            # Check and activate action group 5 if not already in the "Main ascent loop"
+            if ag5:
+                ag5 = check_and_activate_ag5(vessel, altitude(), ag5)
             time.sleep(1)
         altitude.remove()
 
@@ -411,6 +414,14 @@ def twr_error(vessel, target_twr) -> float:
     weight = vessel.mass * vessel.orbit.body.surface_gravity
     current_twr = thrust / weight
     return current_twr - target_twr
+
+
+def check_and_activate_ag5(vessel, altitude, ag5):
+    if ag5 and altitude > 65_000:
+        vessel.control.toggle_action_group(5)
+        print("Action group 5 activated above 65 km")
+        return False
+    return ag5
 
 
 def finalize_launch(orbit) -> None:
