@@ -6,27 +6,6 @@ import argparse
 from simple_pid import PID
 
 
-def clear_screen() -> None:
-    # print("\033c", end="")  # Clear screen equivalent on Unix-like systems
-    try:
-        os.system("clear" if os.name == "posix" else "cls")
-    except OSError as e:
-        print(f"An OSError occurred in clear_screen(): {e}")
-    except Exception as e:
-        print(f"An error occurred in clear_screen(): {e}")
-
-
-def str2bool(v) -> bool:
-    if isinstance(v, bool):
-        return v
-    if v.lower() in ("yes", "true", "t", "y", "1"):
-        return True
-    elif v.lower() in ("no", "false", "f", "n", "0"):
-        return False
-    else:
-        raise argparse.ArgumentTypeError("Boolean value expected.")
-
-
 def commandLine() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Rocket launch and circularization burn script"
@@ -63,35 +42,6 @@ def commandLine() -> argparse.Namespace:
         help="A boolean flag for Action Group 5: escape tower or fairing deployment above 60 km (default: False)",
     )
     return parser.parse_args()
-
-
-def setup_ui(conn, auto_throttle) -> tuple:
-    # Access the stock user interface (UI) canvas
-    canvas = conn.ui.stock_canvas
-    screen_size = canvas.rect_transform.size
-
-    # Add a panel to contain the UI elements
-    panel = canvas.add_panel()
-    rect = panel.rect_transform
-    rect.size = (200, 85)
-    rect.position = (screen_size[0] / 4, screen_size[1] / 2.3)
-
-    # Add a button and text
-    button = panel.add_button("On" if auto_throttle else "Off")
-    button.rect_transform.position = (0, -12)
-    text = panel.add_text("Auto Throttle")
-    text.rect_transform.position = (0, 12)
-    text.color = (1, 1, 1)
-    text.size = 18
-
-    # Hide UI elements for the beginning
-    panel.visible = False
-    button.visible = False
-
-    # Set up a stream to monitor the throttle button
-    button_clicked = conn.add_stream(getattr, button, "clicked")
-
-    return panel, button, text, button_clicked
 
 
 def main() -> None:
@@ -248,7 +198,6 @@ def main() -> None:
         node = vessel.control.add_node(
             conn.space_center.ut + vessel.orbit.time_to_apoapsis, prograde=delta_v
         )
-
         # Calculate burn time (using rocket equation)
         F = vessel.available_thrust
         Isp = vessel.specific_impulse * vessel.orbit.body.surface_gravity
@@ -292,6 +241,56 @@ def main() -> None:
         print(f"A KRPC error occurred: {e}")
     except Exception as e:
         print(f"An unexpected error occurred (note: keep navball extended): {e}")
+
+
+def clear_screen() -> None:
+    # print("\033c", end="")  # Clear screen equivalent on Unix-like systems
+    try:
+        os.system("clear" if os.name == "posix" else "cls")
+    except OSError as e:
+        print(f"An OSError occurred in clear_screen(): {e}")
+    except Exception as e:
+        print(f"An error occurred in clear_screen(): {e}")
+
+
+def str2bool(v) -> bool:
+    if isinstance(v, bool):
+        return v
+    if v.lower() in ("yes", "true", "t", "y", "1"):
+        return True
+    elif v.lower() in ("no", "false", "f", "n", "0"):
+        return False
+    else:
+        raise argparse.ArgumentTypeError("Boolean value expected.")
+
+
+def setup_ui(conn, auto_throttle) -> tuple:
+    # Access the stock user interface (UI) canvas
+    canvas = conn.ui.stock_canvas
+    screen_size = canvas.rect_transform.size
+
+    # Add a panel to contain the UI elements
+    panel = canvas.add_panel()
+    rect = panel.rect_transform
+    rect.size = (200, 85)
+    rect.position = (screen_size[0] / 4, screen_size[1] / 2.3)
+
+    # Add a button and text
+    button = panel.add_button("On" if auto_throttle else "Off")
+    button.rect_transform.position = (0, -12)
+    text = panel.add_text("Auto Throttle")
+    text.rect_transform.position = (0, 12)
+    text.color = (1, 1, 1)
+    text.size = 18
+
+    # Hide UI elements for the beginning
+    panel.visible = False
+    button.visible = False
+
+    # Set up a stream to monitor the throttle button
+    button_clicked = conn.add_stream(getattr, button, "clicked")
+
+    return panel, button, text, button_clicked
 
 
 def setup_telemetry_streams(conn, vessel) -> tuple:
