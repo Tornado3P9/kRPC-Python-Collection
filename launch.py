@@ -39,7 +39,7 @@ def commandLine() -> argparse.Namespace:
         nargs="?",
         const=True,
         default=False,
-        help="A boolean flag for Action Group 5: escape tower or fairing deployment above 60 km (default: False)",
+        help="A boolean flag for Action Group 5: escape tower or fairing deployment above 65 km (default: False)",
     )
     return parser.parse_args()
 
