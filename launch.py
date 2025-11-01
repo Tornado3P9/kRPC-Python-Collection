@@ -379,8 +379,8 @@ def calculate_launch_azimuth_deg(compass, target_altitude, launch_latitude) -> f
         launch_azimuth_deg = 360 + launch_direction
 
     print(f"Target orbital height: {target_altitude / 1000:.2f} km")
-    print(f"Target orbital velocity: {Vdest:.2f} m/s")
-    print(f"Kerbin surface rotation speed: {Vrot:.2f} m/s")
+    # print(f"Target orbital velocity: {Vdest:.2f} m/s")
+    # print(f"Kerbin surface rotation speed: {Vrot:.2f} m/s")
     print(f"Launch azimuth: {launch_azimuth_deg:.2f}° (for {compass:.2f}°)")
     return launch_azimuth_deg
 
