@@ -78,31 +78,11 @@ def main() -> None:
         initial_throttle = 1.0
         pre_launch_setup(vessel, initial_throttle)
 
-        # Calculate adjusted heading
-        kerbin_radius = 600_000
-        target_orbit = kerbin_radius + target_altitude
-        Vdest = target_orbital_velocity(target_orbit)
-
-        Vrot = kerbin_surface_rotation_speed(
-            launch_latitude=0
-        )  # latitude 0 degrees = equator
-
-        azimuth_deg = compass
-
-        launch_azimuth_deg = calculate_launch_azimuth_deg(azimuth_deg, Vdest, Vrot)
-        if 90 < azimuth_deg <= 270:
-            launch_azimuth_deg = 180 + launch_azimuth_deg
-        elif 270 < azimuth_deg < 360:
-            launch_azimuth_deg = 360 + launch_azimuth_deg
-        elif (0 <= azimuth_deg < 90) and (launch_azimuth_deg < 0):
-            launch_azimuth_deg = 360 + launch_azimuth_deg
-
-        print("#####################")
-        print(f"Target orbital height: {target_altitude / 1000:.2f} km")
-        print(f"Target orbital velocity: {Vdest:.2f} m/s")
-        print(f"Kerbin surface rotation speed: {Vrot:.2f} m/s")
-        print(f"Launch azimuth: {launch_azimuth_deg:.2f}° (for {azimuth_deg:.2f}°)")
-        print("#####################")
+        # Calculate the adjusted heading to prevent the planet's
+        # rotation from distorting the final orbital plane.
+        launch_azimuth_deg = calculate_launch_azimuth_deg(
+            compass, target_altitude, launch_latitude=0
+        )
 
         # Launch sequence
         launch_sequence(vessel)
@@ -119,9 +99,11 @@ def main() -> None:
         pid.output_limits = (0, 1)  # Throttle limits
         target_twr = 1.6  # Auto throttle constant
         pid_init = True  # In order to prevent accumulated errors before starting the control process,
-        # i want to Start the controller in manual mode and switch to auto mode when the system is ready.
+        # I want to start the controller in manual mode and switch to auto mode when the system is ready.
 
-        # Main ascent loop
+        ########################
+        ##  Main Ascent Loop  ##
+        ########################
         print("Gravity turn")
         atc = 0  # Auto stage counter
         while True:
@@ -186,6 +168,9 @@ def main() -> None:
             time.sleep(1)
         altitude.remove()
 
+        ################################
+        ##  Circularization Maneuver  ##
+        ################################
         # Plan circularization burn (using vis-viva equation)
         print("Planning circularization burn")
         mu = vessel.orbit.body.gravitational_parameter
@@ -311,14 +296,16 @@ def pre_launch_setup(vessel, initial_throttle) -> None:
     vessel.auto_pilot.target_roll = vessel.flight().roll
 
 
-def target_orbital_velocity(target_orbit):
+def target_orbital_velocity(target_altitude) -> float:
     G = 6.674 * 10**-11  # gravitational constant
     M = 5.2915793 * 10**22  # mass of Kerbin in kg
+    kerbin_radius = 600_000
+    target_orbit = kerbin_radius + target_altitude
     r = target_orbit  # distance from the center of Kerbin in meters
     return math.sqrt(G * M / r)
 
 
-def kerbin_surface_rotation_speed(launch_latitude=0):
+def kerbin_surface_rotation_speed(launch_latitude=0) -> float:
     # Circumference of Kerbin's Equator is (2*π*600000m)
     # Time of Kerbin Sidereal Day = 21549.425 seconds, or 5 hours, 59 minutes, 9.425 seconds
     # VRot(φ) in m/s = ((2*π*r)/T)*cos(φ)
@@ -327,7 +314,7 @@ def kerbin_surface_rotation_speed(launch_latitude=0):
     )
 
 
-def calculate_launch_azimuth_deg(azimuth_deg, Vdest, Vrot):
+def calculate_launch_azimuth_deg(compass, target_altitude, launch_latitude) -> float:
     """_summary_
     Vlaunch = our horizontal delta-V requirement @ our rotational (compass) launch azimuth.
 
@@ -368,15 +355,34 @@ def calculate_launch_azimuth_deg(azimuth_deg, Vdest, Vrot):
     β = 41.540 degrees.
     """
 
-    return math.degrees(
+    # Using speed of objects in target orbit for further Calculation
+    Vdest = target_orbital_velocity(target_altitude)
+
+    # The planet's rotation speed at the latitude of the launch site (latitude 0 degrees = equator)
+    Vrot = kerbin_surface_rotation_speed(launch_latitude)
+
+    launch_direction = math.degrees(
         math.atan(
             (
-                (Vdest * math.sin(math.radians(azimuth_deg)))
+                (Vdest * math.sin(math.radians(compass)))
                 - (Vrot * math.cos(math.radians(0)))
             )
-            / (Vdest * math.cos(math.radians(azimuth_deg)))
+            / (Vdest * math.cos(math.radians(compass)))
         )
     )
+
+    if 90 < compass <= 270:
+        launch_azimuth_deg = 180 + launch_direction
+    elif 270 < compass < 360:
+        launch_azimuth_deg = 360 + launch_direction
+    elif (0 <= compass < 90) and (launch_direction < 0):
+        launch_azimuth_deg = 360 + launch_direction
+
+    print(f"Target orbital height: {target_altitude / 1000:.2f} km")
+    print(f"Target orbital velocity: {Vdest:.2f} m/s")
+    print(f"Kerbin surface rotation speed: {Vrot:.2f} m/s")
+    print(f"Launch azimuth: {launch_azimuth_deg:.2f}° (for {compass:.2f}°)")
+    return launch_azimuth_deg
 
 
 def launch_sequence(vessel) -> None:
@@ -415,7 +421,7 @@ def twr_error(vessel, target_twr) -> float:
     return current_twr - target_twr
 
 
-def check_and_activate_ag5(vessel, altitude, ag5):
+def check_and_activate_ag5(vessel, altitude, ag5) -> bool:
     if ag5 and altitude > 65_000:
         vessel.control.toggle_action_group(5)
         print("Action group 5 activated above 65 km")
