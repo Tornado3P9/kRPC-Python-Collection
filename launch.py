@@ -20,10 +20,10 @@ def commandLine() -> argparse.Namespace:
     )
     parser.add_argument(
         "--compass",
-        type=int,
+        type=check_angle,
         required=False,
         default=90,
-        help="horizontal compass heading in 0°-360° counterclockwise = azimuth (default: 90)",
+        help="horizontal compass heading 0°-360° counterclockwise = azimuth angle (default: 90)",
     )
     parser.add_argument(
         "--auto_throttle",
@@ -252,6 +252,25 @@ def str2bool(v) -> bool:
         raise argparse.ArgumentTypeError("Boolean value expected.")
 
 
+def check_angle(value) -> int:
+    if not isinstance(value, (int, str)):
+        raise argparse.ArgumentTypeError(
+            f"Expected an integer or string, got {type(value).__name__}"
+        )
+    try:
+        ivalue = int(value)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"Expected an integer, got {value}")
+    if ivalue < 0 or ivalue > 360:
+        raise argparse.ArgumentTypeError(
+            f"Angle must be between 0 and 360, got {ivalue}"
+        )
+    if ivalue == 360:
+        return 0
+    else:
+        return ivalue
+
+
 def setup_ui(conn, auto_throttle) -> tuple:
     # Access the stock user interface (UI) canvas
     canvas = conn.ui.stock_canvas
@@ -379,8 +398,6 @@ def calculate_launch_azimuth_deg(
     # The planet's rotation speed at the latitude of the launch site (latitude 0 degrees = equator)
     Vrot = kerbin_surface_rotation_speed(launch_latitude)
 
-    if compass == 360:
-        compass = 0
     launch_direction = math.degrees(
         math.atan(
             (
