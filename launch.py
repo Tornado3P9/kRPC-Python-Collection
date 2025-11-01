@@ -81,7 +81,10 @@ def main() -> None:
         # Calculate the adjusted heading to prevent the planet's
         # rotation from distorting the final orbital plane.
         launch_azimuth_deg = calculate_launch_azimuth_deg(
-            compass, target_altitude, launch_latitude=0
+            vessel.orbit.body.gravitational_parameter,
+            compass,
+            target_altitude,
+            launch_latitude=0,
         )
 
         # Launch sequence
@@ -305,7 +308,7 @@ def target_orbital_velocity(target_altitude) -> float:
     return math.sqrt(G * M / r)
 
 
-def kerbin_surface_rotation_speed(launch_latitude=0) -> float:
+def kerbin_surface_rotation_speed(launch_latitude) -> float:
     # Circumference of Kerbin's Equator is (2*π*600000m)
     # Time of Kerbin Sidereal Day = 21549.425 seconds, or 5 hours, 59 minutes, 9.425 seconds
     # VRot(φ) in m/s = ((2*π*r)/T)*cos(φ)
@@ -314,7 +317,9 @@ def kerbin_surface_rotation_speed(launch_latitude=0) -> float:
     )
 
 
-def calculate_launch_azimuth_deg(compass, target_altitude, launch_latitude) -> float:
+def calculate_launch_azimuth_deg(
+    mu, compass, target_altitude, launch_latitude
+) -> float:
     """_summary_
     Vlaunch = our horizontal delta-V requirement @ our rotational (compass) launch azimuth.
 
@@ -355,12 +360,22 @@ def calculate_launch_azimuth_deg(compass, target_altitude, launch_latitude) -> f
     β = 41.540 degrees.
     """
 
-    # Using speed of objects in target orbit for further Calculation
-    Vdest = target_orbital_velocity(target_altitude)
+    # Using speed of objects in target orbit for further Calculation (not good)
+    # Vdest = target_orbital_velocity(target_altitude)
+    # Using deltaV from the sum of imaginary surface_height_orbit and partial orbit change (vis-viva-1)
+    kerbin_radius = 600_000
+    target_orbit = kerbin_radius + target_altitude
+    surface_orbit_dv = math.sqrt(mu / kerbin_radius)
+    change_orbit_dv = surface_orbit_dv * (
+        math.sqrt((2 * target_orbit) / (kerbin_radius + target_orbit)) - 1
+    )
+    Vdest = surface_orbit_dv + change_orbit_dv
 
     # The planet's rotation speed at the latitude of the launch site (latitude 0 degrees = equator)
     Vrot = kerbin_surface_rotation_speed(launch_latitude)
 
+    if compass == 360:
+        compass = 0
     launch_direction = math.degrees(
         math.atan(
             (
@@ -379,8 +394,8 @@ def calculate_launch_azimuth_deg(compass, target_altitude, launch_latitude) -> f
         launch_azimuth_deg = 360 + launch_direction
 
     print(f"Target orbital height: {target_altitude / 1000:.2f} km")
-    # print(f"Target orbital velocity: {Vdest:.2f} m/s")
-    # print(f"Kerbin surface rotation speed: {Vrot:.2f} m/s")
+    # print(f"Vdest: {Vdest:.2f} m/s")
+    # print(f"Vrot: {Vrot:.2f} m/s")
     print(f"Launch azimuth: {launch_azimuth_deg:.2f}° (for {compass:.2f}°)")
     return launch_azimuth_deg
 
