@@ -1,5 +1,5 @@
 import krpc
-from scipy.optimize import minimize
+from scipy.optimize import minimize # to use this you also need the scipy package: `uv add scipy`
 import time
 
 def twr_error(throttle, vessel, target_twr):

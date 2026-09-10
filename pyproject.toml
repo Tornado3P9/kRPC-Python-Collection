@@ -3,9 +3,15 @@ name = "kRPC-Python-Collection"
 version = "0.1.0"
 description = "Python scripts for controlling Rockets in the KSP space simulator"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.14"
 dependencies = [
-    "krpc>=0.5.4",
-    "scipy>=1.15.2",
+    "krpc>=0.6.0",
     "simple-pid>=2.0.1",
 ]
+
+[project.scripts]
+kRPC-Python-Collection = "kRPC-Python-Collection:main"
+
+[build-system]
+requires = ["uv_build>=0.12.11,<0.13.0"]
+build-backend = "uv_build"

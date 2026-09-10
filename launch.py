@@ -153,7 +153,7 @@ def main() -> None:
                 # Also check and activate action group 5
                 ag5 = check_and_activate_ag5(vessel, altitude(), ag5)
 
-            time.sleep(0.1)
+            time.sleep(0.1) # logically connected to the atc counter variable
 
         # Stop Redundant Streams and Remove UI elements
         apoapsis.remove()
@@ -218,7 +218,8 @@ def main() -> None:
         print("Burn finished")
         time_to_apoapsis.remove()
         node.remove()  # Remove maneuver node
-        vessel.auto_pilot.disengage()  # Give control back to the pilot
+        # vessel.auto_pilot.disengage() # Old syntax
+        vessel.auto_pilot.engaged = False # Give control back to the pilot
         vessel.control.sas = True  # Activate SAS
         vessel.control.sas_mode = conn.space_center.SASMode.stability_assist
         print("Waiting for steering to settle down")
@@ -228,7 +229,7 @@ def main() -> None:
     except krpc.error.RPCError as e:
         print(f"A KRPC error occurred: {e}")
     except Exception as e:
-        print(f"An unexpected error occurred (note: keep navball extended): {e}")
+        print(f"An unexpected error occurred (is navball still extended?): {e}")
 
 
 def clear_screen() -> None:
@@ -311,7 +312,8 @@ def pre_launch_setup(vessel, initial_throttle) -> None:
     vessel.control.sas = False
     vessel.control.rcs = False
     vessel.control.throttle = initial_throttle
-    vessel.auto_pilot.engage()
+    # vessel.auto_pilot.engage() # Old syntax
+    vessel.auto_pilot.engaged = True
     vessel.auto_pilot.target_pitch_and_heading(
         90, vessel.flight().heading
     )  # (pitch, yaw)
@@ -389,36 +391,47 @@ def calculate_launch_azimuth_deg(
     # Using deltaV from the sum of imaginary surface_height_orbit and partial orbit change (vis-viva-1)
     kerbin_radius = 600_000
     target_orbit = kerbin_radius + target_altitude
+
     surface_orbit_dv = math.sqrt(mu / kerbin_radius)
+
     change_orbit_dv = surface_orbit_dv * (
-        math.sqrt((2 * target_orbit) / (kerbin_radius + target_orbit)) - 1
+        math.sqrt(
+            (2 * target_orbit)
+            / (kerbin_radius + target_orbit)
+        ) - 1
     )
+
     Vdest = surface_orbit_dv + change_orbit_dv
 
     # The planet's rotation speed at the latitude of the launch site (latitude 0 degrees = equator)
     Vrot = kerbin_surface_rotation_speed(launch_latitude)
 
-    launch_direction = math.degrees(
-        math.atan(
-            (
-                (Vdest * math.sin(math.radians(compass)))
-                - (Vrot * math.cos(math.radians(0)))
-            )
-            / (Vdest * math.cos(math.radians(compass)))
-        )
-    )
+    compass_rad = math.radians(compass)
+    latitude_rad = math.radians(launch_latitude)
 
-    if 90 < compass <= 270:
-        launch_azimuth_deg = 180 + launch_direction
-    elif 270 < compass < 360:
-        launch_azimuth_deg = 360 + launch_direction
-    elif (0 <= compass < 90) and (launch_direction < 0):
-        launch_azimuth_deg = 360 + launch_direction
+    # Komponenten der gewünschten inertialen Geschwindigkeit
+    destination_east = Vdest * math.sin(compass_rad)
+    destination_north = Vdest * math.cos(compass_rad)
+
+    # Geschwindigkeit durch die Planetendrehung
+    rotation_east = Vrot * math.cos(latitude_rad)
+
+    # Benötigte Geschwindigkeit relativ zur Oberfläche
+    launch_east = destination_east - rotation_east
+    launch_north = destination_north
+
+    # atan2(east, north) ergibt einen Kurs relativ zu Norden.
+    # % 360 normalisiert auf den Bereich 0 <= Winkel < 360.
+    launch_azimuth_deg = math.degrees(
+        math.atan2(launch_east, launch_north)
+    ) % 360
 
     print(f"Target orbital height: {target_altitude / 1000:.2f} km")
-    # print(f"Vdest: {Vdest:.2f} m/s")
-    # print(f"Vrot: {Vrot:.2f} m/s")
-    print(f"Launch azimuth: {launch_azimuth_deg:.2f}° (for {compass:.2f}°)")
+    print(
+        f"Launch azimuth: {launch_azimuth_deg:.2f}° "
+        f"(for {compass:.2f}°)"
+    )
+
     return launch_azimuth_deg
 
 

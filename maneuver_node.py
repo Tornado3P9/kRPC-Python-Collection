@@ -41,7 +41,8 @@ def execute_maneuver_node() -> None:
     start_time = calculate_start_time(conn, node)
 
     conn.space_center.warp_to(start_time - 30)
-    vessel.auto_pilot.engage()
+    # vessel.auto_pilot.engage() # old syntax
+    vessel.auto_pilot.engaged = True
     vessel.auto_pilot.reference_frame = node.reference_frame
     vessel.auto_pilot.target_direction = node.burn_vector(node.reference_frame)
     print("Waiting until maneuver start...")
@@ -56,7 +57,8 @@ def execute_maneuver_node() -> None:
         time.sleep(0.1)
 
     vessel.control.throttle = 0.0
-    vessel.auto_pilot.disengage()
+    # vessel.auto_pilot.disengage() # old syntax
+    vessel.auto_pilot.engaged = False
     node.remove()
     vessel.control.sas = True
     time.sleep(1)

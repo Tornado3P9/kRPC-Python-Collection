@@ -9,13 +9,13 @@ The launch script solely checks for the existence of active thrust, without cons
 
 ## *Usage:*
 
-**1. Download the KSP-Addon from Github ([https://github.com/krpc/krpc/releases/download/v0.5.4/krpc-0.5.4.zip](https://github.com/krpc/krpc/releases/download/v0.5.4/krpc-0.5.4.zip)) and copy it to the KSP Game Folder:**
+**1. Download the KSP-Addon from Github ([https://github.com/krpc/krpc/releases/download/v0.6.0/krpc-0.6.0.zip](https://github.com/krpc/krpc/releases/download/v0.6.0/krpc-0.6.0.zip)) and copy it to the KSP Game Folder:**
 
 ```bash
-wget https://github.com/krpc/krpc/releases/download/v0.5.4/krpc-0.5.4.zip
+wget https://github.com/krpc/krpc/releases/download/v0.6.0/krpc-0.6.0.zip
 ```
 
-Unzip it and copy the content from the "`GameData`" folder, which should be the "`ModuleManager.4.2.2.dll`" file and the "`kRPC`" directory, to the KSP Game Folder. If you installed KSP over Steam on Linux, the game folder is at:
+Unzip it and copy the content from the "`GameData`" folder, which should be the "`ModuleManager.4.2.3.dll`" file and the "`kRPC`" directory, to the KSP Game Folder. If you installed KSP over Steam on Linux, the game folder is at:
 `~/.steam/steam/steamapps/common/Kerbal Space Program/GameData/`, which can also be accessed via "`~/.local/share/Steam/steamapps/common/Kerbal Space Program/GameData`".
 
 Start KSP and verify that the new Addon was installed correctly and works as intended. Then...
