@@ -80,6 +80,7 @@ def main() -> None:
 
         # Calculate the adjusted heading to prevent the planet's
         # rotation from distorting the final orbital plane.
+        # At launch_latitude=0 is the Kerbal Space Center Launch Site
         launch_azimuth_deg = calculate_launch_azimuth_deg(
             vessel.orbit.body.gravitational_parameter,
             compass,
@@ -391,47 +392,36 @@ def calculate_launch_azimuth_deg(
     # Using deltaV from the sum of imaginary surface_height_orbit and partial orbit change (vis-viva-1)
     kerbin_radius = 600_000
     target_orbit = kerbin_radius + target_altitude
-
     surface_orbit_dv = math.sqrt(mu / kerbin_radius)
-
     change_orbit_dv = surface_orbit_dv * (
-        math.sqrt(
-            (2 * target_orbit)
-            / (kerbin_radius + target_orbit)
-        ) - 1
+        math.sqrt((2 * target_orbit) / (kerbin_radius + target_orbit)) - 1
     )
-
     Vdest = surface_orbit_dv + change_orbit_dv
 
     # The planet's rotation speed at the latitude of the launch site (latitude 0 degrees = equator)
     Vrot = kerbin_surface_rotation_speed(launch_latitude)
 
-    compass_rad = math.radians(compass)
-    latitude_rad = math.radians(launch_latitude)
-
-    # Komponenten der gewünschten inertialen Geschwindigkeit
-    destination_east = Vdest * math.sin(compass_rad)
-    destination_north = Vdest * math.cos(compass_rad)
-
-    # Geschwindigkeit durch die Planetendrehung
-    rotation_east = Vrot * math.cos(latitude_rad)
-
-    # Benötigte Geschwindigkeit relativ zur Oberfläche
-    launch_east = destination_east - rotation_east
-    launch_north = destination_north
-
-    # atan2(east, north) ergibt einen Kurs relativ zu Norden.
-    # % 360 normalisiert auf den Bereich 0 <= Winkel < 360.
     launch_azimuth_deg = math.degrees(
-        math.atan2(launch_east, launch_north)
-    ) % 360
-
-    print(f"Target orbital height: {target_altitude / 1000:.2f} km")
-    print(
-        f"Launch azimuth: {launch_azimuth_deg:.2f}° "
-        f"(for {compass:.2f}°)"
+        math.atan(
+            (
+                (Vdest * math.sin(math.radians(compass)))
+                - (Vrot * math.cos(math.radians(0)))
+            )
+            / (Vdest * math.cos(math.radians(compass)))
+        )
     )
 
+    if 90 < compass <= 270:
+        launch_azimuth_deg = 180 + launch_azimuth_deg
+    elif 270 < compass < 360:
+        launch_azimuth_deg = 360 + launch_azimuth_deg
+    elif (0 <= compass < 90) and (launch_azimuth_deg < 0):
+        launch_azimuth_deg = 360 + launch_azimuth_deg
+
+    print(f"Target orbital height: {target_altitude / 1000:.2f} km")
+    # print(f"Vdest: {Vdest:.2f} m/s")
+    # print(f"Vrot: {Vrot:.2f} m/s")
+    print(f"Launch azimuth: {launch_azimuth_deg:.2f}° (for {compass:.2f}°)")
     return launch_azimuth_deg
 
 
