@@ -28,6 +28,7 @@ git clone https://github.com/Tornado3P9/kRPC-Python-Collection.git
 **3. Ensure Python is installed on your system, then use `pip` to install the required Python libraries for the scripts:**
 
 ```bash
+sudo apt install python3 python3-pip
 python3 -m venv ./.venv
 source ./.venv/bin/activate
 pip install -r requirements.txt
