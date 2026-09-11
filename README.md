@@ -46,12 +46,22 @@ uv sync
 ```bash
 deactivate &> /dev/null; source ./.venv/bin/activate
 python launch.py --help
-python launch.py --target 90000
+python launch.py
 ```
 
 **or using `uv`**
 
 ```bash
 uv run launch.py --help
-uv run launch.py --target 90000
+uv run launch.py
+```
+
+**Instead of using just the default settings you might want to customize some parameters:**
+
+```bash
+uv run launch.py --target 95000 --compass 225 --ag5 True
+```
+
+```bash
+uv run maneuver_node.py --circularize_at pe
 ```
