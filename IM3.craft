@@ -2430,7 +2430,7 @@ PART
 		name = ModuleGimbal
 		isEnabled = True
 		gimbalLock = False
-		gimbalLimiter = 100
+		gimbalLimiter = 35
 		currentShowToggles = False
 		enableYaw = True
 		enablePitch = True
@@ -8974,7 +8974,7 @@ PART
 		name = ModuleGimbal
 		isEnabled = True
 		gimbalLock = False
-		gimbalLimiter = 100
+		gimbalLimiter = 15
 		currentShowToggles = False
 		enableYaw = True
 		enablePitch = True
@@ -9026,7 +9026,7 @@ PART
 		name = ModuleGimbal
 		isEnabled = True
 		gimbalLock = False
-		gimbalLimiter = 100
+		gimbalLimiter = 15
 		currentShowToggles = False
 		enableYaw = True
 		enablePitch = True
@@ -9573,7 +9573,7 @@ PART
 		name = ModuleGimbal
 		isEnabled = True
 		gimbalLock = False
-		gimbalLimiter = 100
+		gimbalLimiter = 15
 		currentShowToggles = False
 		enableYaw = True
 		enablePitch = True
@@ -10016,7 +10016,7 @@ PART
 		name = ModuleGimbal
 		isEnabled = True
 		gimbalLock = False
-		gimbalLimiter = 100
+		gimbalLimiter = 5
 		currentShowToggles = False
 		enableYaw = True
 		enablePitch = True
@@ -10459,7 +10459,7 @@ PART
 		name = ModuleGimbal
 		isEnabled = True
 		gimbalLock = False
-		gimbalLimiter = 100
+		gimbalLimiter = 5
 		currentShowToggles = False
 		enableYaw = True
 		enablePitch = True
@@ -10902,7 +10902,7 @@ PART
 		name = ModuleGimbal
 		isEnabled = True
 		gimbalLock = False
-		gimbalLimiter = 100
+		gimbalLimiter = 5
 		currentShowToggles = False
 		enableYaw = True
 		enablePitch = True
@@ -11345,7 +11345,7 @@ PART
 		name = ModuleGimbal
 		isEnabled = True
 		gimbalLock = False
-		gimbalLimiter = 100
+		gimbalLimiter = 5
 		currentShowToggles = False
 		enableYaw = True
 		enablePitch = True
@@ -11788,7 +11788,7 @@ PART
 		name = ModuleGimbal
 		isEnabled = True
 		gimbalLock = False
-		gimbalLimiter = 100
+		gimbalLimiter = 5
 		currentShowToggles = False
 		enableYaw = True
 		enablePitch = True
@@ -12231,7 +12231,7 @@ PART
 		name = ModuleGimbal
 		isEnabled = True
 		gimbalLock = False
-		gimbalLimiter = 100
+		gimbalLimiter = 5
 		currentShowToggles = False
 		enableYaw = True
 		enablePitch = True
@@ -12674,7 +12674,7 @@ PART
 		name = ModuleGimbal
 		isEnabled = True
 		gimbalLock = False
-		gimbalLimiter = 100
+		gimbalLimiter = 5
 		currentShowToggles = False
 		enableYaw = True
 		enablePitch = True
@@ -13117,7 +13117,7 @@ PART
 		name = ModuleGimbal
 		isEnabled = True
 		gimbalLock = False
-		gimbalLimiter = 100
+		gimbalLimiter = 5
 		currentShowToggles = False
 		enableYaw = True
 		enablePitch = True
