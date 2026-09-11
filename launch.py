@@ -23,7 +23,7 @@ def commandLine() -> argparse.Namespace:
         type=check_angle,
         required=False,
         default=90,
-        help="horizontal compass heading 0°-360° counterclockwise = azimuth angle (default: 90)",
+        help="Horizontal compass heading: 0°–360°, measured clockwise from north; azimuth angle (default: 90°)",
     )
     parser.add_argument(
         "--auto_throttle",
